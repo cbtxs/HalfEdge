@@ -10,7 +10,7 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 set(HalfEdgeMesh_LIBRARIES HEMesh)
 message(STATUS "${PROJECT_SOURCE_DIR}")
 
-# GoogleTest requires at least C++14
+# requires at least C++14
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wl,--exclude-libs,ALL")
 
