@@ -10,7 +10,13 @@ template<typename V, typename E, typename H, typename C>
 class HalfEdgeMeshBase
 {
 public:
-  HalfEdgeMeshBase(): hnode(spr), hedge(spr), hcell(spr), halfedge(spr) {}
+  HalfEdgeMeshBase(): node(spr), edge(spr), cell(spr), halfedge(spr) {}
+
+  HalfEdgeMeshBase(const HalfEdgeMeshBase & mesh): node(spr), edge(spr), cell(spr), halfedge(spr) 
+  {
+    int NHE = number_of_halfedges(); 
+    halfedge.reserve(NHE);
+  }
 
   template<typename Entity, typename... Args>
   Entity * add_entity(Args &&... args)
@@ -24,20 +30,28 @@ public:
     if constexpr (std::is_same_v<Entity, H>)
       return halfedge;
     else if constexpr (std::is_same_v<Entity, V>)
-      return hnode;
+      return node;
     else if constexpr (std::is_same_v<Entity, E>)
-      return hedge;
+      return edge;
     else{
       static_assert(std::is_same_v<Entity, C>);
-      return hcell;
+      return cell;
     }
   }
 
+  int number_of_cells() { return cell.size();}
+
+  int number_of_edges() { return edge.size();}
+
+  int number_of_nodes() { return node.size();}
+  
+  int number_of_halfedges() { return halfedge.size();}
+
 private:
   std::pmr::synchronized_pool_resource spr;
-  data_set<V> hnode;
-  data_set<E> hedge;
-  data_set<C> hcell;
+  data_set<V> node;
+  data_set<E> edge;
+  data_set<C> cell;
   data_set<H> halfedge;
 };
 
