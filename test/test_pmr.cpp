@@ -87,6 +87,15 @@ void test_vector(int N)
 
 }
 
+void test_bety_operator()
+{
+  int * s = new int[10];
+  s[1] = 1;
+  *s |= 1 << 31;
+  std::cout << s[0] << std::endl;
+  delete [] s;
+}
+
 int main(int , char**argv)
 {
   int N = std::stoi(argv[1]);

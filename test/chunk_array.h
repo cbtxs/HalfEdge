@@ -1,3 +1,6 @@
+#ifndef _CHUNK_ARRAY_
+#define _CHUNK_ARRAY_
+
 #include <iostream>
 #include <cassert>
 #include <vector>
@@ -16,7 +19,10 @@ class ChunkArray : public ChunkArrayBase
 {
 public:
   // 构造函数
-  ChunkArray() : size_(0), chunks_(0) {}
+  ChunkArray() : size_(0), chunks_(0) 
+  { 
+    chunks_.reserve(1024); 
+  }
 
   // 析构函数，释放分配的内存
   ~ChunkArray() 
@@ -148,4 +154,4 @@ private:
     std::vector<T*> chunks_;  // 存储块的指针
 };
 
-
+#endif /* _CHUNK_ARRAY_ */ 
