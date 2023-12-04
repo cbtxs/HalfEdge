@@ -1,16 +1,14 @@
 #ifndef _VERTEX_
 #define _VERTEX_
 
-#include "Geometry.h"
-
 namespace HEM
 {
 class HalfEdge;
 
-class Vertex : public Vector
+class Node
 {
 public:
-  Vertex (Point & p, HalfEdge * h = nullptr): Vector(p), start(h) {}
+  Node(HalfEdge * h = nullptr): start(h) {}
 
   void SetHalfEdge(HalfEdge * h) { start = h;}
 
