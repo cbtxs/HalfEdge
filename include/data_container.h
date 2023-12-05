@@ -6,6 +6,9 @@
 #include <algorithm>
 
 #include "chunk_array.h"
+#include "entity.h"
+
+namespace HEM {
 
 class DataContainer
 {
@@ -79,6 +82,11 @@ public:
     return std::dynamic_pointer_cast<DataArray<T> >(*it);
   }
 
+  MarkArray & is_free() {return is_free_;}
+
+  /** 获取 data 的接口 */
+  std::vector<std::shared_ptr<ArrayBase>> & data() {return data_;}
+
   void delete_index(uint32_t idx)
   {
     is_free_.set_true(idx); 
@@ -120,19 +128,44 @@ template<typename Entity>
 class EntityDataContainer : public DataContainer
 {
 public:
-  EntityDataContainer(uint32_t size) : DataContainer(size) 
+  EntityDataContainer(uint32_t size=0) : DataContainer(size), NE(size) 
   {
     entity = std::make_shared<DataArray<Entity> >(this->is_free_, "entity", size);
+    this->data().push_back(entity);
+  }
+
+  std::shared_ptr<DataArray<Entity> > & get_entity() {return entity;}
+
+  Entity & add_entity()
+  {
+    NE++;
+    uint32_t index = this->add_index();
+    return entity->get(index);
   }
 
   void add_entity(Entity & e)
   {
-    entity.push_back(e);
-    this->add_index();
+    NE++;
+    uint32_t index = this->add_index();
+    entity->get(index) = e;
+  }
+
+  void delete_entity(Entity * e)
+  {
+    this->delete_index(e->halfedge()->template entity<Entity>());
+    NE--;
+  }
+
+  void number_of_entity()
+  {
+    return NE;
   }
 
 private:
+  uint32_t NE;
   std::shared_ptr<DataArray<Entity> > entity;
 };
+
+}
 
 #endif /* _DATA_CONTAINER_ */ 

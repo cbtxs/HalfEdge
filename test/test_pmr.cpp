@@ -3,7 +3,7 @@
 #include <memory>
 #include <memory_resource>
 #include "chunk_array.h"
-#include "template.h"
+#include <type_traits>
 
 template<typename T>
 class vector_test
@@ -125,6 +125,14 @@ private:
 
 using C = ABase;
 
+template<typename Entity>
+auto entity()
+{
+  return std::conditional_t<std::is_same_v<Entity, int>,  ,
+         std::conditional_t<std::is_same_v<Entity, double>, double,
+         std::conditional_t<std::is_same_v<Entity, uint32_t>, uint32_t, int>>>
+}
+
 void test_inherit()
 {
   B<int> b(0);
@@ -134,9 +142,7 @@ void test_inherit()
 
   using TE = std::tuple<C, B<int>, ABase>;
 
-  std::vector<int> a(3);
-  constexpr uint32_t index = tuple_type_index<ABase, TE>::value;
-  std::cout << index << std::endl;
+  std::cout << entity<double>() << std::endl;
 }
 
 int main(int , char**argv)

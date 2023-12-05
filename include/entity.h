@@ -2,67 +2,75 @@
 #define _ENTITY_
 
 #include <stdint.h>
+#include "halfedge.h"
+
 namespace HEM
 {
-
-class HalfEdge
-{
-public:
-  HalfEdge(uint32_t index): index_(index) {}
-
-  uint32_t & index() { return index_;}
-
-  void set_index(uint32_t index) {index_=index;}
-
-  const uint32_t & index() const { return index_;}
-
-private:
-  uint32_t index_;
-};
 
 class Cell
 {
 public:
-  Cell(HalfEdge * h = nullptr): start(h) {}
+  Cell(HalfEdge * h = nullptr): start_(h) {}
 
-  void set_halfedge(HalfEdge * h) { start = h;}
+  void set_halfedge(HalfEdge * h) { start_ = h;}
 
-  HalfEdge * halfedge() { return start; }
+  HalfEdge * halfedge() { return start_; }
 
-  const HalfEdge * halfedge() const { return start; }
+  const HalfEdge * halfedge() const { return start_; }
+
+  Cell & operator=(const Cell & other)
+  {
+    if (this != &other) // 避免自我赋值
+      start_ = other.start_;
+    return *this;
+  }
 
 private:
-  HalfEdge * start;
+  HalfEdge * start_;
 };
 
 class Edge
 {
 public:
-  Edge(HalfEdge * h = nullptr): start(h) {}
+  Edge(HalfEdge * h = nullptr): start_(h) {}
 
-  void set_halfedge(HalfEdge * h) { start = h;}
+  void set_halfedge(HalfEdge * h) { start_ = h;}
 
-  HalfEdge * halfedge() { return start; }
+  HalfEdge * halfedge() { return start_; }
 
-  const HalfEdge * halfedge() const { return start; }
+  const HalfEdge * halfedge() const { return start_; }
+
+  Edge & operator=(const Edge & other)
+  {
+    if (this != &other) // 避免自我赋值
+      start_ = other.start_;
+    return *this;
+  }
 
 private:
-  HalfEdge * start;
+  HalfEdge * start_;
 };
 
 class Node
 {
 public:
-  Node(HalfEdge * h = nullptr): start(h) {}
+  Node(HalfEdge * h = nullptr): start_(h) {}
 
-  void set_halfedge(HalfEdge * h) { start = h;}
+  void set_halfedge(HalfEdge * h) { start_ = h;}
 
-  HalfEdge * halfedge() { return start; }
+  HalfEdge * halfedge() { return start_; }
 
-  const HalfEdge * halfedge() const { return start; }
+  const HalfEdge * halfedge() const { return start_; }
+
+  Node & operator=(const Node & other)
+  {
+    if (this != &other) // 避免自我赋值
+      start_ = other.start_;
+    return *this;
+  }
 
 private:
-  HalfEdge * start;
+  HalfEdge * start_;
 };
 
 
