@@ -2,8 +2,8 @@
 #include <iostream>
 #include <memory>
 #include <memory_resource>
-#include "container/block_vector.hpp"
 #include "chunk_array.h"
+#include "template.h"
 
 template<typename T>
 class vector_test
@@ -59,7 +59,8 @@ void test_vector(int N)
   d0 = std::chrono::duration_cast<std::chrono::microseconds>(s2-s1);
   std::cout << "1 : " << d0.count()/1e6 << std::endl;
 
-  ChunkArray<int, 2048> vv;
+  /**
+  ChunkArray<int, 2048> vv("vv");
   s1 = std::chrono::high_resolution_clock::now();
   for(int i=0; i<N; i++)
     vv.push_back(i);
@@ -67,7 +68,7 @@ void test_vector(int N)
   d0 = std::chrono::duration_cast<std::chrono::microseconds>(s2-s1);
   std::cout << "1 : " << d0.count()/1e6 << std::endl;
 
-  ChunkArray<int> vint;
+  ChunkArray<int> vint("vint");
   for(int i = 0; i < 10000; i++)
   {
     vint.emplace_back(i);
@@ -84,6 +85,7 @@ void test_vector(int N)
     if(vint[i] != i)
       std::cout << (int)(vint[i]==i) << std::endl;
   }
+  */
 
 }
 
@@ -96,8 +98,50 @@ void test_bety_operator()
   delete [] s;
 }
 
+class ABase
+{
+public:
+  ABase(int aa):a(aa) {}
+  int & get_val() {return a;}
+
+  virtual int add(int a) = 0;
+private:
+  int a;
+};
+
+template<typename T>
+class B: public ABase
+{
+public:
+  B(int a_): ABase(a_) {}
+
+  int add(int b) override
+  {
+    return this->get_val()+b;
+  }
+private:
+  std::vector<T> s;
+};
+
+using C = ABase;
+
+void test_inherit()
+{
+  B<int> b(0);
+  ABase * c = &b;
+  auto ss = c->add(3);
+  std::cout << ss << std::endl;
+
+  using TE = std::tuple<C, B<int>, ABase>;
+
+  std::vector<int> a(3);
+  constexpr uint32_t index = tuple_type_index<ABase, TE>::value;
+  std::cout << index << std::endl;
+}
+
 int main(int , char**argv)
 {
-  int N = std::stoi(argv[1]);
-  test_vector(N);
+  //int N = std::stoi(argv[1]);
+  //test_vector(N);
+  test_inherit();
 }

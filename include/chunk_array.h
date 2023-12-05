@@ -23,6 +23,9 @@ public:
   {
     return name_;
   }
+
+  virtual void resize(size_t size) = 0;
+
 private:
   std::string name_;
 };
@@ -73,7 +76,7 @@ public:
   }
 
   // 设置指定位置的 bool 值
-  void set_fasle(size_t index) 
+  void set_false(size_t index) 
   {
     assert(index < size_ && "Index out of range");
     size_t chunkIndex = index / ChunkSize;  // 计算是第几个 chunk
@@ -120,7 +123,7 @@ public:
   }
 
   // 获取元素
-  bool operator[](size_t index) { return get(index); }
+  bool operator[](uint32_t index) { return get(index); }
 
   // 获取当前元素个数
   size_t size() const { return size_;}
@@ -138,7 +141,7 @@ public:
   {
     clear();
     reserve(other.size_);
-    int N_chunk = other.chunks_.size();
+    uint32_t N_chunk = other.chunks_.size();
     for (size_t i = 0; i < N_chunk; ++i) 
       std::copy(other.chunks_[i], other.chunks_[i]+ChunkSize/32, chunks_[i]);
   }
@@ -155,7 +158,7 @@ public:
     }
   }
 
-  void resize(size_t newSize) 
+  void resize(size_t newSize) override
   {
     reserve(newSize);  // 如果新大小大于当前大小，调用 reserve 函数
     size_ = newSize;
@@ -180,7 +183,7 @@ public:
   /**
    * @brief 构造函数
    */
-  ChunkArray(const ChunkArrayBool<1024u> & mark, std::string name): 
+  ChunkArray(ChunkArrayBool<1024u> & mark, std::string name): 
     ArrayBase(name), size_(0), chunks_(0), mark_(mark)
   { 
     chunks_.reserve(1024); 
@@ -189,7 +192,7 @@ public:
   /**
    * @brief 构造函数带 resize
    */
-  ChunkArray(const ChunkArrayBool<1024u> & mark, std::string name, int size): 
+  ChunkArray(ChunkArrayBool<1024u> & mark, std::string name, int size): 
     ArrayBase(name), size_(0), chunks_(0), mark_(mark)
   {
     resize(size);
@@ -202,14 +205,40 @@ public:
       delete[] chunk;
   }
 
-  // 获取元素
-  T& operator[](size_t index) 
+  T& operator[](size_t index)
   {
     assert(index < size_ && "Index out of range");
     size_t chunkIndex = index / ChunkSize;
     size_t offset = index % ChunkSize;
     return chunks_[chunkIndex][offset];
   }
+
+  // 获取元素
+  const T& operator[](size_t index) const
+  {
+    assert(index < size_ && "Index out of range");
+    size_t chunkIndex = index / ChunkSize;
+    size_t offset = index % ChunkSize;
+    return chunks_[chunkIndex][offset];
+  }
+
+  T & back()
+  {
+    size_t chunkIndex = size_ / ChunkSize;
+    size_t offset = size_ % ChunkSize;
+    return chunks_[chunkIndex][offset];
+  }
+
+  const T & back() const
+  {
+    size_t chunkIndex = size_ / ChunkSize;
+    size_t offset = size_ % ChunkSize;
+    return chunks_[chunkIndex][offset];
+  }
+
+  T & get(size_t index) { return this->operator [](index);}
+
+  const T & get(size_t index) const { return this->operator [](index);}
 
   // 添加元素
   void push_back(const T& value) 
@@ -263,7 +292,7 @@ public:
   {
     clear();
     reserve(other.size_);
-    int N_chunk = other.chunks_.size();
+    size_t N_chunk = other.chunks_.size();
     for (size_t i = 0; i < N_chunk; ++i) 
       std::copy(other.chunks_[i], other.chunks_[i]+ChunkSize, chunks_[i]);
   }
@@ -280,7 +309,7 @@ public:
     }
   }
 
-  void resize(size_t newSize) 
+  void resize(size_t newSize) override 
   {
     if (newSize <= capacity()) 
     {
@@ -319,7 +348,7 @@ public:
       return *this;
     }
 
-    T& operator*() { return array_[index_];}
+    T & operator*() { return array_[index_];}
 
   private:
     ChunkArray& array_;
@@ -335,7 +364,7 @@ public:
 private:
     size_t size_;  // 元素个数
     std::vector<T*> chunks_;  // 存储块的指针
-    const ChunkArrayBool<1024u> & mark_;
+    ChunkArrayBool<1024u> & mark_;
 };
 
 #endif /* _CHUNK_ARRAY_ */ 
