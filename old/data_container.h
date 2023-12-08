@@ -69,7 +69,7 @@ public:
    * @brief 获取某个数据
    */
   template<typename T>
-  std::shared_ptr<DataArray<T> > & get_data(std::string name)
+  std::shared_ptr<DataArray<T> > & get_data(std::string & name)
   {
     auto ff = [&](std::shared_ptr<ArrayBase> & data) -> bool
     {
@@ -178,24 +178,22 @@ public:
   using Base = DataContainer;
   using Self = EntityDataContainer<Entity>;
 public:
-  EntityDataContainer(uint32_t size=0) : DataContainer(size)
+  EntityDataContainer(uint32_t size=0) : DataContainer(size) 
   {
-    Base::add_data<DataArray<Entity> >("entity");
-    Base::add_data<DataArray<Entity>>("indices");
+    entity = Base::add_data<DataArray<Entity> >("entity");
+    indices = Base::add_data<DataArray<Entity> >("indices");
   }
 
   Entity & add_entity()
   {
-    auto & entity = get_entity();
     uint32_t index = Base::add_index();
     return entity->get(index);
   }
 
   void add_entity(Entity & e)
   {
-    auto & entity = get_entity();
     uint32_t index = Base::add_index();
-    entity[index] = e;
+    entity->get(index) = e;
   }
 
   void delete_entity(Entity * e)
@@ -206,26 +204,22 @@ public:
   void update_indices()
   {
     uint32_t k = 0;
-    auto & indices = get_indices();
-    for(auto it = indices.begin(); it != indices.end(); ++it)
+    for(auto it = indices->begin(); it != indices->end(); ++it)
       *it = k++;
   }
 
-  DataArray<Entity> & get_entity() 
-  {
-    return *(get_data<Entity>("entity"));
-  }
-
-  DataArray<uint32_t> & get_indices()
-  {
-    return *(get_data<Entity>("indices"));
-  }
-
-  Self & operator = (Self & other)
+  Self & operator=(const Self & other)
   {
     Base::operator=(other);
-    return *this;
+    indices = Base::get_data<uint32_t>("indices");
+    entity = Base::get_data<Entity>("entity");
   }
+
+  std::shared_ptr<DataArray<Entity> > & get_entity() {return entity;}
+
+private:
+  std::shared_ptr<DataArray<uint32_t> > indices;
+  std::shared_ptr<DataArray<Entity> > entity;
 };
 
 }

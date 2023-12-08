@@ -293,13 +293,6 @@ public:
     return cp;
   }
 
-  /** @brief operator =  */
-  Self & operator = (const Self & other)
-  {
-    Base::operator=(other);
-    return *this;
-  }
-
 public:
   // 迭代子
   class Iterator {
@@ -320,8 +313,6 @@ public:
     }
 
     T & operator*() { return array_[index_];}
-
-    T * operator->() { return &array_[index_];}
 
   private:
     ChunkArrayWithMark & array_;
