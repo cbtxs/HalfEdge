@@ -15,11 +15,12 @@ class HalfEdge
 {
 public:
   HalfEdge(uint32_t index=0) : 
-    next_(nullptr), prev_(nullptr), oppo_(this), index_(index), cell_(0), edge_(0), node_(0) {}
+    next_(nullptr), prev_(nullptr), oppo_(this), cell_(nullptr), 
+    edge_(nullptr), node_(nullptr), index_(index)  
+  {}
 
+  /** 数据接口 */
   uint32_t & index() { return index_;}
-
-  const uint32_t & index() const { return index_;}
 
   HalfEdge * next() {return next_;}
 
@@ -29,18 +30,33 @@ public:
 
   HalfEdge * halfedge() {return this;}
 
-  uint32_t & cell() {return cell_;}
+  Cell * cell() {return cell_;}
 
-  uint32_t & edge() {return edge_;}
+  Edge * edge() {return edge_;}
 
-  uint32_t & node() {return node_;}
+  Node * node() {return node_;}
+
+  /** const 数据接口 */
+  const uint32_t & index() const { return index_;}
+
+  const HalfEdge * next() const {return next_;}
+
+  const HalfEdge * previous() const {return prev_;}
+
+  const HalfEdge * opposite() const {return oppo_;}
+
+  const HalfEdge * halfedge() const {return this;}
+
+  const Cell * cell() const {return cell_;}
+
+  const Edge * edge() const {return edge_;}
+
+  const Node * node() const {return node_;}
 
   template<typename Entity>
-  uint32_t & entity()
+  Entity & entity()
   {
-    if constexpr (std::is_same_v<Entity, HalfEdge>)
-      return index_;
-    else if constexpr (std::is_same_v<Entity, Cell>)
+    if constexpr (std::is_same_v<Entity, Cell>)
       return cell_;
     else if constexpr (std::is_same_v<Entity, Edge>)
       return edge_;
@@ -48,17 +64,23 @@ public:
       return node_;
   }
 
-  void set_index(uint32_t index) {index_=index;}
-
   void set_next(HalfEdge * next) {next_ = next;}
 
   void set_previous(HalfEdge * previous) {prev_ = previous;}
 
   void set_opposite(HalfEdge * opposite) {oppo_ = opposite;}
 
+  void set_node(Node * node) {node_ = node;}
+
+  void set_edge(Edge * edge) {edge_ = edge;}
+
+  void set_cell(Cell * cell) {cell_ = cell;}
+
+  void set_index(uint32_t index) {index_=index;}
+
   HalfEdge & operator=(const HalfEdge& other)
   {
-    if (this != &other) // 避免自我赋值
+    if (this != &other) /**< 避免自我赋值 */
     {
       next_ = other.next_;
       prev_ = other.prev_;
@@ -78,7 +100,10 @@ private:
   HalfEdge * next_, * prev_, * oppo_;
 
   /** 半边的存储编号，所属单元的存储编号， 所在边的存储编号，指向顶点的存储编号 */
-  uint32_t index_, cell_, edge_, node_;
+  Cell * cell_;
+  Edge * edge_;
+  Node * node_;
+  uint32_t index_;
 };
 
 }
