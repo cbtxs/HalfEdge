@@ -23,32 +23,19 @@ class ArrayBase
 {
 public:
   //using MarkArray = ChunkArrayBool<1024u>;
-  using MarkArray = ChunkArray<uint32_t, 1024u>;
+  using MarkArray = ChunkArray<uint8_t, 1024u>;
 
 public:
   ArrayBase(std::string name = "null"): name_(name) {}
 
-  std::string get_name()
-  {
-    return name_;
-  }
+  std::string get_name() { return name_; }
+  const std::string get_name() const { return name_; }
 
-  const std::string get_name() const
-  {
-    return name_;
-  }
-
-  void set_name(std::string name)
-  {
-    name_ = name;
-  }
+  void set_name(std::string name) { name_ = name; }
 
   virtual ~ArrayBase() = 0;
-
   virtual void resize(size_t size) = 0;
-
   virtual void clear() = 0;
-
   virtual void copy_self(std::shared_ptr<MarkArray> &, std::shared_ptr<ArrayBase> & );
 
 private:

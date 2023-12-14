@@ -1,12 +1,12 @@
 #ifndef _HALFEDGE_MESH_BASE_
 #define _HALFEDGE_MESH_BASE_
 
-#include "data_set.h"
+#include "data_container.h"
 #include <memory_resource>
 
 namespace HEM
 {
-template<typename V, typename E, typename H, typename C>
+template<typename V, typename E, typename C, typename H>
 class HalfEdgeMeshBase
 {
 public:

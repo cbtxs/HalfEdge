@@ -16,8 +16,8 @@ class DataContainer
 public:
   template<typename T>
   using DataArray = ChunkArrayWithMark<T, CHUNK_SIZE>; 
-
   using MarkArray = ArrayBase::MarkArray; 
+
 public:
   /**
    * @brief 构造函数
@@ -142,22 +142,22 @@ public:
   {
     data_number_++;
     /** 当 free_index_ 为空时，没有可用指标所以要重新分配内存 */
-    if(free_index_.empty())
-    {
-      for(auto & ptr : data_)
-        ptr->resize(size()+1);
-      //is_free_->push_back_false();
-      is_free_->push_back(0);
-      return size();
-    }
-    /** 当 free_index_ 非空时，启用最后一个可用指标 */
-    else
+    if(!free_index_.empty())
     {
       uint32_t index = free_index_.back();
       //is_free_->set_false(index);
       is_free_->get(index) = 0;
       free_index_.pop_back();
       return index; 
+    }
+    /** 当 free_index_ 非空时，启用最后一个可用指标 */
+    else
+    {
+      for(auto & ptr : data_)
+        ptr->resize(size()+1);
+      //is_free_->push_back_false();
+      is_free_->push_back(0);
+      return size();
     }
   }
 

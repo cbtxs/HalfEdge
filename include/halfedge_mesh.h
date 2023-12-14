@@ -1,20 +1,25 @@
-#ifndef _HALFEDGE_MESH_BASE_
-#define _HALFEDGE_MESH_BASE_
+#ifndef _HalfEdge_MESH_BASE_
+#define _HalfEdge_MESH_BASE_
 
 #include <memory>
 #include <map>
-#include <algorithm>
 
-#include "entity.h"
 #include "data_container.h"
 #include "tuple_type_index.h"
 #include "geometry.h"
 
 namespace HEM
 {
+template<typename N, typename E, typename C, typename H>
 class HalfEdgeMeshBase
 {
 public:
+  using Node = N;
+  using Edge = E;
+  using Cell = C;
+  using HalfEdge = H;
+
+  using Self = HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge>;
   using DataContainer = DataContainer<1024u>;
   template<typename T>
   using Array = DataContainer::DataArray<T>;
@@ -22,289 +27,252 @@ public:
 public:
   HalfEdgeMeshBase()
   {
-    nodes_ = node_data_->add_data<Node>("node");
-    node_indices_ = node_data_->add_data<uint32_t>("indices");
-    node_coordinate_ = node_data_->add_data<Point>("coordinate");
+    nodes_ptr_ = node_data_ptr_->add_data<Node>("node");
+    edges_ptr_ = edge_data_ptr_->add_data<Edge>("edge");
+    cells_ptr_ = cell_data_ptr_->add_data<Cell>("cell");
+    halfedges_ptr_ = halfedge_data_ptr_->add_data<HalfEdge>("halfedge");
 
-    edges_ = edge_data_->add_data<Edge>("edge");
-    edge_indices_ = edge_data_->add_data<uint32_t>("indices");
-
-    cells_ = cell_data_->add_data<Cell>("cell");
-    cell_indices_ = cell_data_->add_data<uint32_t>("indices");
-
-    halfedges_ = halfedge_data_->add_data<HalfEdge>("halfedge");
-    next_halfedge_ =  halfedge_data_->add_data<uint32_t>("next");
-    prev_halfedge_ = halfedge_data_->add_data<uint32_t>("previous");
-    oppo_halfedge_ =  halfedge_data_->add_data<uint32_t>("opposite");
-    halfedge_to_cell_ = halfedge_data_->add_data<uint32_t>("cell");
-    halfedge_to_edge_ = halfedge_data_->add_data<uint32_t>("edge");
-    halfedge_to_node_ = halfedge_data_->add_data<uint32_t>("node");
+    node_indices_ptr_ = node_data_ptr_->add_data<uint32_t>("indices");
+    edge_indices_ptr_ = edge_data_ptr_->add_data<uint32_t>("indices");
+    cell_indices_ptr_ = cell_data_ptr_->add_data<uint32_t>("indices");
   }
 
   /** 复制构造函数 */
-  HalfEdgeMeshBase(const HalfEdgeMeshBase & mesh);
+  HalfEdgeMeshBase(const Self & mesh);
 
   /** 以单元为中心的网格 */
-  HalfEdgeMeshBase(double * node, uint32_t * cell, uint32_t NN, uint32_t NC, uint32_t NV);
+  HalfEdgeMeshBase(double * node, uint32_t * cell, uint32_t NN, uint32_t NC, uint32_t NV):
+    HalfEdgeMeshBase()
+  {
+    reinit(node, cell, NN, NC, NV);
+  }
+
+  /** 以单元为中心的网格重新初始化 */
+  void reinit(double * node, uint32_t * cell, uint32_t NN, uint32_t NC, uint32_t NV);
 
   /** 实体接口 */
-  Array<Node> & get_node() { return *nodes_; }
-
-  Array<Edge> & get_edge() { return *edges_; }
-
-  Array<Cell> & get_cell() { return *cells_; }
-
-  Array<HalfEdge> & get_halfedge() { return *(halfedges_); }
+  Array<Node> & get_node() { return *nodes_ptr_; }
+  Array<Edge> & get_edge() { return *edges_ptr_; }
+  Array<Cell> & get_cell() { return *cells_ptr_; }
+  Array<HalfEdge> & get_halfedge() { return *halfedges_ptr_; }
 
   /** 删除实体 */
-  void delete_node(Node & n)
-  {
-    auto & h2n = halfedge_to_node(); 
-    node_data_->delete_index(h2n[n.halfedge()->index()]);
-  }
-
-  void delete_edge(Edge & e)
-  {
-    auto & h2e = halfedge_to_edge(); 
-    edge_data_->delete_index(h2e[e.halfedge()->index()]);
-  }
-
-  void delete_cell(Cell & c)
-  {
-    auto & h2c = halfedge_to_cell(); 
-    cell_data_->delete_index(h2c[c.halfedge()->index()]);
-  }
-
-  void delete_halfedge(HalfEdge & h) { halfedge_data_->delete_index(h.index()); }
+  void delete_node(Node & n) { node_data_ptr_->delete_index(n.index());}
+  void delete_edge(Edge & e) { edge_data_ptr_->delete_index(e.index());}
+  void delete_cell(Cell & c) { cell_data_ptr_->delete_index(c.index());}
+  void delete_halfedge(HalfEdge & h) { halfedge_data_ptr_->delete_index(h.index()); }
 
   /** 添加实体 */
-  Node & add_node() { return nodes_->get(node_data_->add_index()); }
-
-  Edge & add_edge() { return edges_->get(edge_data_->add_index()); }
-
-  Cell & add_cell() { return cells_->get(cell_data_->add_index()); }
-
-  HalfEdge & add_halfedge() { return halfedges_->get(halfedge_data_->add_index()); }
+  Node & add_node() { return nodes_ptr_->get(node_data_ptr_->add_index()); }
+  Edge & add_edge() { return edges_ptr_->get(edge_data_ptr_->add_index()); }
+  Cell & add_cell() { return cells_ptr_->get(cell_data_ptr_->add_index()); }
+  HalfEdge & add_halfedge() { return halfedges_ptr_->get(halfedge_data_ptr_->add_index()); }
 
   /** 实体个数 */
-  uint32_t number_of_nodes() { return node_data_->number_of_data(); }
-
-  uint32_t number_of_edges() { return edge_data_->number_of_data(); }
-
-  uint32_t number_of_cells() { return cell_data_->number_of_data(); }
-
-  uint32_t number_of_halfedges() { return halfedge_data_->number_of_data(); }
-
+  uint32_t number_of_nodes() { return node_data_ptr_->number_of_data(); }
+  uint32_t number_of_edges() { return edge_data_ptr_->number_of_data(); }
+  uint32_t number_of_cells() { return cell_data_ptr_->number_of_data(); }
+  uint32_t number_of_halfedges() { return halfedge_data_ptr_->number_of_data(); }
   uint32_t number_of_boundary_edges() 
   { 
-    uint32_t NE = edge_data_->number_of_data();
-    uint32_t NHE = halfedge_data_->number_of_data();
+    uint32_t NE = edge_data_ptr_->number_of_data();
+    uint32_t NHE = halfedge_data_ptr_->number_of_data();
     return NE*2-NHE;
   }
 
-  /** 半边数据的接口 */
-  Array<uint32_t> & next_halfedge() { return *next_halfedge_; }
+  /** 加密半边 */
+  void refine_halfedge(HalfEdge * h, const Point & p)
+  {
+    HalfEdge * o = h->opposite();
 
-  Array<uint32_t> & prev_halfedge() { return *prev_halfedge_; }
+    Node & n = add_node();
+    Edge & e = add_edge();
+    HalfEdge & h0 = add_halfedge();
+    HalfEdge & h1 = add_halfedge();
 
-  Array<uint32_t> & oppo_halfedge() { return *oppo_halfedge_; }
+    e.set_halfedge(o);
+    n.reset(n.index(), &h0, p);
 
-  Array<uint32_t> & halfedge_to_cell() { return *halfedge_to_cell_;}
+    h0.reset(h, h->previous(), h->opposite(), h->cell(), &e, &n, h0.index());
+    h1.reset(o, o->previous(), o->opposite(), o->cell(), o->edge(), &n, h1.index());
 
-  Array<uint32_t> & halfedge_to_edge() { return *halfedge_to_edge_;}
-
-  Array<uint32_t> & halfedge_to_node() { return *halfedge_to_node_;}
-
-  Array<Point> & node_coordinate() { return *node_coordinate_;}
+    h->previous()->set_next(&h0);
+    h->set_previous(&h0);
+    h->set_opposite(&h1);
+    o->previous()->set_next(&h1);
+    o->set_previous(&h1);
+    o->set_opposite(&h0);
+  }
 
   /** @brief 清空网格, 但实际上没有释放内存 */
   void clear()
   {
-    node_data_->clear();
-    edge_data_->clear();
-    cell_data_->clear();
-    halfedge_data_->clear();
+    node_data_ptr_->clear();
+    edge_data_ptr_->clear();
+    cell_data_ptr_->clear();
+    halfedge_data_ptr_->clear();
   }
 
   /** @brief 清空网格并释放内存 */
   void release()
   {
-    node_data_->release();
-    edge_data_->release();
-    cell_data_->release();
-    halfedge_data_->release();
+    node_data_ptr_->release();
+    edge_data_ptr_->release();
+    cell_data_ptr_->release();
+    halfedge_data_ptr_->release();
   }
 
   void swap(HalfEdgeMeshBase & other)
   {
-    std::swap(node_data_, other.node_data_);
-    std::swap(edge_data_, other.edge_data_);
-    std::swap(cell_data_, other.cell_data_);
-    std::swap(halfedge_data_, other.halfedge_data_);
+    std::swap(node_data_ptr_, other.node_data_);
+    std::swap(edge_data_ptr_, other.edge_data_);
+    std::swap(cell_data_ptr_, other.cell_data_);
+    std::swap(halfedge_data_ptr_, other.halfedge_data_);
+    update();
   }
 
   void update()
   {
-    nodes_ = node_data_->get_data<Node>("node");
-    node_indices_ = node_data_->get_data<uint32_t>("indices");
-    node_coordinate_ = node_data_->get_data<Point>("coordinate");
-
-    edges_ = edge_data_->get_data<Edge>("edge");
-    edge_indices_ = edge_data_->get_data<uint32_t>("indices");
-
-    cells_ = cell_data_->get_data<Cell>("cell");
-    cell_indices_ = cell_data_->get_data<uint32_t>("indices");
-
-    halfedges_ = halfedge_data_->get_data<HalfEdge>("halfedge");
-    next_halfedge_ =  halfedge_data_->get_data<uint32_t>("next");
-    prev_halfedge_ = halfedge_data_->get_data<uint32_t>("previous");
-    oppo_halfedge_ =  halfedge_data_->get_data<uint32_t>("opposite");
-    halfedge_to_cell_ = halfedge_data_->get_data<uint32_t>("cell");
-    halfedge_to_edge_ = halfedge_data_->get_data<uint32_t>("edge");
-    halfedge_to_node_ = halfedge_data_->get_data<uint32_t>("node");
+    nodes_ptr_ = node_data_ptr_->get_data<Node>("node");
+    edges_ptr_ = edge_data_ptr_->get_data<Edge>("edge");
+    cells_ptr_ = cell_data_ptr_->get_data<Cell>("cell");
+    halfedges_ptr_ = halfedge_data_ptr_->get_data<HalfEdge>("halfedge");
+    node_indices_ptr_ = node_data_ptr_->get_data<uint32_t>("indices");
+    edge_indices_ptr_ = edge_data_ptr_->get_data<uint32_t>("indices");
+    cell_indices_ptr_ = cell_data_ptr_->get_data<uint32_t>("indices");
   }
 
-  HalfEdgeMeshBase & operator = (const HalfEdgeMeshBase & other);
+  Self & operator = (const Self & other);
 
 private:
-
   /** 实体数据集合 */
-  std::shared_ptr<DataContainer> node_data_; 
-  std::shared_ptr<DataContainer> edge_data_;
-  std::shared_ptr<DataContainer> cell_data_;
-  std::shared_ptr<DataContainer> halfedge_data_;
+  std::shared_ptr<DataContainer> node_data_ptr_; 
+  std::shared_ptr<DataContainer> edge_data_ptr_;
+  std::shared_ptr<DataContainer> cell_data_ptr_;
+  std::shared_ptr<DataContainer> halfedge_data_ptr_;
 
-  std::shared_ptr<Array<Node>> nodes_;
-  std::shared_ptr<Array<uint32_t>> node_indices_;
-  std::shared_ptr<Array<Point>>  node_coordinate_;
-
-  std::shared_ptr<Array<Edge>>  edges_;
-  std::shared_ptr<Array<uint32_t>>  edge_indices_;
-
-  std::shared_ptr<Array<Cell>>   cells_;
-  std::shared_ptr<Array<uint32_t>>  cell_indices_;
-
-  std::shared_ptr<Array<HalfEdge>> halfedges_;
-  std::shared_ptr<Array<uint32_t>> next_halfedge_;
-  std::shared_ptr<Array<uint32_t>> prev_halfedge_;
-  std::shared_ptr<Array<uint32_t>> oppo_halfedge_;
-  std::shared_ptr<Array<uint32_t>> halfedge_to_cell_;
-  std::shared_ptr<Array<uint32_t>> halfedge_to_edge_;
-  std::shared_ptr<Array<uint32_t>> halfedge_to_node_;
+  /** 方便使用的指针 */
+  std::shared_ptr<Array<Node>> nodes_ptr_;
+  std::shared_ptr<Array<Edge>>  edges_ptr_;
+  std::shared_ptr<Array<Cell>>   cells_ptr_;
+  std::shared_ptr<Array<HalfEdge>> halfedges_ptr_;
+  std::shared_ptr<Array<uint32_t>> node_indices_ptr_;
+  std::shared_ptr<Array<uint32_t>>  edge_indices_ptr_;
+  std::shared_ptr<Array<uint32_t>>  cell_indices_ptr_;
 };
 
-HalfEdgeMeshBase::HalfEdgeMeshBase(const HalfEdgeMeshBase & mesh): HalfEdgeMeshBase() 
+/** 复制构造函数 */
+template<typename Node, typename Edge, typename Cell, typename HalfEdge>
+HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge>::HalfEdgeMeshBase(const HalfEdgeMeshBase & mesh): 
+  HalfEdgeMeshBase() 
 {
-  (*this) = mesh;
+  //clear();
+  *node_data_ptr_ = *mesh.node_data_ptr_;
+  *edge_data_ptr_ = *mesh.edge_data_ptr_;
+  *cell_data_ptr_ = *mesh.cell_data_ptr_;
+  *halfedge_data_ptr_ = *mesh.halfedge_data_ptr_;
+
+  auto & node_ = get_node(); 
+  auto & edge_ = get_edge(); 
+  auto & cell_ = get_cell(); 
+  auto & halfedge_ = get_halfedge();
+  for(auto it = node_.begin(); it != node_.end(); ++it)
+    it->set_halfedge(&(halfedge_[it->halfedge()->index()]));
+
+  for(auto it = edge_.begin(); it != edge_.end(); ++it)
+    it->set_halfedge(&(halfedge_[it->halfedge()->index()]));
+
+  for(auto it = cell_.begin(); it != cell_.end(); ++it)
+    it->set_halfedge(&(halfedge_[it->halfedge()->index()]));
+
+  for(auto & h : halfedge_)
+  {
+    h.reset(halfedge_[h.next()->index()], 
+            halfedge_[h.previous()->index()], 
+            halfedge_[h.opposite()->index()], 
+            cell_[h.cell()->index()], 
+            edge_[h.edge()->index()], 
+            node_[h.node()->index()], 
+            h.index()); 
+  }
+  update();
 }
 
 /** 
  * @brief 以单元为中心的网格数据为参数的构造函数
  * @note 关键在于生成半边的顶点
  */
-HalfEdgeMeshBase::HalfEdgeMeshBase(double * node, uint32_t * cell, 
-    uint32_t NN, uint32_t NC, uint32_t NV):HalfEdgeMeshBase()
+template<typename Node, typename Edge, typename Cell, typename HalfEdge>
+void HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge>::reinit(double * node, uint32_t * cell, 
+    uint32_t NN, uint32_t NC, uint32_t NV)
 {
+  clear();
   auto & node_ = get_node();
-  auto & coordinate = node_coordinate();
   for(uint32_t i = 0; i < NN; i++)
   {
-    add_node();
-    coordinate[i] = Point(node[i*2], node[i*2+1]);
+    Node * n = &add_node();
+    node_[i].set_coordinate(Point(node[2*i], node[2*i+1]));
   }
 
-  auto & h2n = halfedge_to_node();
-  auto & h2e = halfedge_to_edge();
-  auto & h2c = halfedge_to_cell();
-  auto & next = next_halfedge();
-  auto & prev = prev_halfedge();
-  auto & oppo = oppo_halfedge();
-  
   std::vector<std::map<uint32_t, HalfEdge*> > n2n(NN);
   std::vector<HalfEdge*> c2h(NV);
-  std::vector<uint32_t> preidx(NV);
+  std::vector<uint32_t> previdx(NV);
+  std::vector<uint32_t> nextidx(NV);
   for(uint32_t i = 0; i < NV; i++)
-    preidx[i] = (NV-1+i)%NV;
+  {
+    previdx[i] = (NV-1+i)%NV;
+    nextidx[i] = (NV+1+i)%NV;
+  }
   /** 生成 halfedge_to_cell, halfedge_to_node, next_halfedge **/
   for(uint32_t i = 0; i < NC; i++)
   {
     Cell & c = add_cell();
     for(uint32_t j = 0; j < NV; j++)
-    {
       c2h[j] = &add_halfedge();
-      h2c[c2h[j]->index()] = i;
-      h2n[c2h[j]->index()] = cell[i*NV+j];
-      node_[cell[i*NV+j]].set_halfedge(c2h[j]);
-    }
     for(uint32_t j = 0; j < NV; j++)
     {
-      next[c2h[j]->index()] = c2h[preidx[j]]->index();
-      n2n[cell[i*NV+preidx[j]]].emplace(std::pair<uint32_t, HalfEdge * >(j, c2h[j]));
+      c2h[j]->reset(c2h[nextidx[j]], c2h[previdx[j]], c2h[j], &c, nullptr, &node_[i*NV+j], i*NV+j);
+      n2n[cell[i*NV+previdx[j]]].emplace(std::pair<uint32_t, HalfEdge * >(j, c2h[j]));
     }
-    c.set_halfedge(c2h[0]);
+    c.reset(i, c2h[0]);
   }
-  /** 生成 previous halfedge */
-  auto & halfedge_ = get_halfedge();
-  for(HalfEdge & h : halfedge_)
-    prev[next[h.index()]] = h.index();
 
-  uint32_t uint32_max = -1;
-  h2e.set_value(uint32_max);
   /** 生成 edge, opposite_halfedge, halfedge_to_edge, node 的半边 */
   for(uint32_t i = 0; i < NN; i++)
   {
-    node_[n2n[i].begin()->first] = n2n[i].begin()->second;
+    node_[n2n[i].begin()->first].set_halfedge(n2n[i].begin()->second);
     for(auto & it : n2n[i])
     {
-      const auto & oppoit = n2n[it.first].find(i);
-      if(oppoit != n2n[it.first].end())
+      if(it.second->edge() == nullptr)
       {
-        oppo[it.second->index()] = oppoit->second->index();
-        oppo[oppoit->second->index()] = it.second->index();
-      }
-      else
-        oppo[it.second->index()] = oppoit->second->index();
-      if(h2e[it.second->index()] == uint32_max)
-      {
+        const auto & oppoit = n2n[it.first].find(i);
+        if(oppoit != n2n[it.first].end())
+        {
+          it.second->set_opposite(oppoit->second);
+          oppoit->second->set_opposite(it.second);
+        }
         Edge & e = add_edge();
-        e.set_halfedge(it.second);
-        h2e[it.second->index()] = number_of_edges()-1;
-        h2e[oppoit->second->index()] = number_of_edges()-1;
+        e.reset(number_of_edges()-1, it.second);
+        it.second->set_edge(&e);
+        it.second->opposite()->set_edge(&e);
       }
     }
   }
 }
 
-HalfEdgeMeshBase & HalfEdgeMeshBase::operator = (const HalfEdgeMeshBase & other)
+template<typename Node, typename Edge, typename Cell, typename HalfEdge>
+HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge> & HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge>::operator = (const Self & other)
 {
   if(this != &other)
   {
-    //clear();
-    *node_data_ = *other.node_data_;
-    *edge_data_ = *other.edge_data_;
-    *cell_data_ = *other.cell_data_;
-    *halfedge_data_ = *other.halfedge_data_;
-
-    auto & halfedge_ = get_halfedge();
-    auto & node_ = get_node(); 
-    for(auto it = node_.begin(); it != node_.end(); ++it)
-      it->set_halfedge(&(halfedge_[it->halfedge()->index()]));
-
-    auto & edge_ = get_edge(); 
-    for(auto it = edge_.begin(); it != edge_.end(); ++it)
-      it->set_halfedge(&(halfedge_[it->halfedge()->index()]));
-
-    auto & cell_ = get_cell(); 
-    for(auto it = cell_.begin(); it != cell_.end(); ++it)
-      it->set_halfedge(&(halfedge_[it->halfedge()->index()]));
-    update();
+    HalfEdgeMeshBase m(other);
+    swap(m);
   }
   return *this;
 }
 
 
-
 }
 
 
-#endif /* _HALFEDGE_MESH_BASE_ */ 
+#endif /* _HalfEdge_MESH_BASE_ */ 

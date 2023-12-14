@@ -5,12 +5,15 @@
 #include <vector>
 #include <stdexcept>
 #include <memory>
+#include <iostream>
+
+//#include "mark_array.h"
 
 namespace HEM {
 
 class ArrayBase;
 
-template <typename T, size_t ChunkSize>
+template<typename T, uint32_t CHUNK_SIZE>
 class ChunkArray;
 
 /**
@@ -19,35 +22,33 @@ class ChunkArray;
 class ArrayBase 
 {
 public:
-  using MarkArray = ChunkArray<uint32_t, 1024u>;
+  //using MarkArray = ChunkArrayBool<1024u>;
+  using MarkArray = ChunkArray<uint8_t, 1024u>;
 
 public:
-  ArrayBase(std::string name): name_(name) {}
+  ArrayBase(std::string name = "null"): name_(name) {}
 
-  std::string get_name()
-  {
-    return name_;
-  }
+  std::string get_name() { return name_; }
+  const std::string get_name() const { return name_; }
 
-  const std::string get_name() const
-  {
-    return name_;
-  }
+  void set_name(std::string name) { name_ = name; }
 
-  void set_name(std::string name)
-  {
-    name_ = name;
-  }
-
+  virtual ~ArrayBase() = 0;
   virtual void resize(size_t size) = 0;
-
   virtual void clear() = 0;
-
-  virtual std::shared_ptr<ArrayBase> copy_self(MarkArray & mark);
+  virtual void copy_self(std::shared_ptr<MarkArray> &, std::shared_ptr<ArrayBase> & );
 
 private:
   std::string name_;
 };
+
+ArrayBase::~ArrayBase() {}
+
+void ArrayBase::resize(size_t ){}
+
+void ArrayBase::clear() {}
+
+void ArrayBase::copy_self(std::shared_ptr<MarkArray> &, std::shared_ptr<ArrayBase> & ) {}
 
 /**
  * @brief 分块存储的数组
@@ -56,10 +57,11 @@ private:
  * @param size_     : 当前数组的长度
  * @param chunks_   : 每个块的指针
  */
-template <typename T, size_t ChunkSize = 1024u>
+template <typename T, uint32_t CHUNK_SIZE = 1024u>
 class ChunkArray : public ArrayBase 
 {
 public:
+  const constexpr static uint32_t ChunkSize = CHUNK_SIZE;
   using Self = ChunkArray<T, ChunkSize>;
   using Base = ArrayBase;
 
@@ -67,7 +69,7 @@ public:
   /**
    * @brief 构造函数
    */
-  ChunkArray(std::string name): Base(name), size_(0), chunks_(0)
+  ChunkArray(std::string name = "null"): Base(name), size_(0), chunks_(0)
   { 
     chunks_.reserve(1024); 
   }
@@ -75,13 +77,21 @@ public:
   /**
    * @brief 构造函数带 resize
    */
-  ChunkArray(std::string name, int size): Base(name), size_(0), chunks_(0)
+  ChunkArray(int size, std::string name = "null"): Base(name), size_(0), chunks_(0)
   {
     resize(size);
   }
 
+  /**
+   * @brief 复制构造函数
+   */
+  ChunkArray(const Self & other)
+  {
+    this->copy(other);
+  }
+
   // 析构函数，释放分配的内存
-  ~ChunkArray() 
+  ~ChunkArray() override 
   {
     for (T* chunk : chunks_) 
       delete[] chunk;
@@ -171,7 +181,7 @@ public:
   {
     if(this != &other)
     {
-      this->set_name(other->get_name());
+      this->set_name(other.get_name());
       resize(other.size_);
       size_t N_chunk = other.chunks_.size();
       for (size_t i = 0; i < N_chunk; ++i) 
@@ -189,11 +199,12 @@ public:
   /** @breif 预留空间，使得至少可以容纳指定数量的元素 */
   void reserve(size_t newCapacity) 
   {
-    if (newCapacity > capacity()) 
+    uint32_t cap = capacity();
+    if (newCapacity > cap) 
     {
-      size_t requiredChunks = (newCapacity + ChunkSize - 1) / ChunkSize;
+      uint32_t requiredChunks = (newCapacity + ChunkSize - 1) / ChunkSize;
       chunks_.resize(requiredChunks, nullptr);
-      for (size_t i = capacity()/ChunkSize; i < requiredChunks; ++i) 
+      for (size_t i = cap/ChunkSize; i < requiredChunks; ++i) 
         chunks_[i] = new T[ChunkSize]();
     }
   }
@@ -201,9 +212,7 @@ public:
   void resize(size_t newSize) override 
   {
     if (newSize <= capacity()) 
-    {
       size_ = newSize;  // 如果新大小小于等于当前大小，直接更新 size_
-    } 
     else 
     {
       reserve(newSize);  // 如果新大小大于当前大小，调用 reserve 函数
@@ -222,8 +231,7 @@ public:
   class Iterator 
   {
   public:
-    Iterator(Self & array, size_t index)
-        : array_(array), index_(index) {}
+    Iterator(Self & array, size_t index): array_(array), index_(index) {}
 
     bool operator!=(const Iterator& other) const { return index_ != other.index_; }
 
@@ -234,6 +242,8 @@ public:
     }
 
     T & operator*() { return array_[index_];}
+
+    T * operator->() { return &array_[index_];}
 
   private:
     Self & array_;
@@ -247,8 +257,8 @@ public:
   Iterator end() { return Iterator(*this, size_);}
 
 private:
-    size_t size_;  // 元素个数
-    std::vector<T*> chunks_;  // 存储块的指针
+  size_t size_;  // 元素个数
+  std::vector<T*> chunks_;  // 存储块的指针
 };
 
 /**
@@ -258,39 +268,33 @@ private:
  * @param size_     : 当前数组的长度
  * @param chunks_   : 每个块的指针
  */
-template <typename T, size_t ChunkSize = 1024u>
-class ChunkArrayWithMark : public ChunkArray<T, ChunkSize> 
+template <typename T, size_t CHUNK_SIZE = 1024u>
+class ChunkArrayWithMark : public ChunkArray<T, CHUNK_SIZE> 
 {
 public:
-  using Base = ChunkArray<T, ChunkSize>;
-  using Mark = typename Base::Base::MarkArray;
-  using Self = ChunkArrayWithMark<T, ChunkSize>;
+  using Base = ChunkArray<T, CHUNK_SIZE>;
+  using Self = ChunkArrayWithMark<T, CHUNK_SIZE>;
+  using MarkArray = typename Base::MarkArray;
+
 public:
+  /**
+   * @brief 空的构造函数
+   */
+  ChunkArrayWithMark(): Base() {}
+
   /**
    * @brief 构造函数
    */
-  ChunkArrayWithMark(std::string name, Mark & mark): 
-    Base(name), size_(0), chunks_(0), mark_(mark)
-  { 
-    chunks_.reserve(1024); 
-  }
+  ChunkArrayWithMark(std::string name, std::shared_ptr<MarkArray> mark): 
+    Base(mark->size(), name), mark_(mark) {}
 
-  /**
-   * @brief 构造函数带 resize
-   */
-  ChunkArrayWithMark(std::string name, int size, Mark & mark): 
-    ArrayBase(name), size_(0), chunks_(0), mark_(mark)
+  void set_mark(std::shared_ptr<MarkArray> & mark) { mark_ = mark; }
+
+  void copy_self(std::shared_ptr<MarkArray> & mark, std::shared_ptr<ArrayBase> & re) override
   {
-    this->resize(size);
-  }
-
-  void set_mark(Mark & mark) { mark_ = mark; }
-
-  std::shared_ptr<ArrayBase> copy_self(Mark & mark) override
-  {
-    std::shared_ptr<Self> cp = std::make_shared<Self>(this->name_, this->size(), mark);
+    std::shared_ptr<Self> cp = std::make_shared<Self>(Base::get_name(), mark);
     cp->copy(*this);
-    return cp;
+    re = std::dynamic_pointer_cast<ArrayBase>(cp);
   }
 
 public:
@@ -300,19 +304,28 @@ public:
     Iterator(ChunkArrayWithMark & array, size_t index)
         : array_(array), index_(index) {}
 
-    bool operator!=(const Iterator& other) const { return index_ != other.index_; }
-
+    /** 左 ++ */
     Iterator & operator++() 
     {
       index_++;
-      while(index_ < array_.size_ && array_.mark_[index_]==1)
-      {
+      while(index_ < array_.size() && (array_.mark_->get(index_)==1))
         index_++;
-      }
       return *this;
     }
 
+    /** 右 ++ */
+    Iterator operator++(int) 
+    {
+      Iterator temp = *this;
+      ++(*this);
+      return temp;
+    }
+
+    bool operator!=(const Iterator& other) const { return index_ != other.index_; }
+
     T & operator*() { return array_[index_];}
+
+    T * operator->() { return &array_[index_];}
 
   private:
     ChunkArrayWithMark & array_;
@@ -323,12 +336,10 @@ public:
   Iterator begin() { return Iterator(*this, 0); }
 
   // 迭代子的结束位置
-  Iterator end() { return Iterator(*this, size_);}
+  Iterator end() { return Iterator(*this, this->size());}
 
 private:
-    size_t size_;  // 元素个数
-    std::vector<T*> chunks_;  // 存储块的指针
-    Mark & mark_;
+  std::shared_ptr<MarkArray> mark_;
 };
 
 }

@@ -87,6 +87,8 @@ public:
     double y;
 };
 
+
+
 using Vector = Vector2d;
 using Point  = Vector2d;
 
