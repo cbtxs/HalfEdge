@@ -122,7 +122,21 @@ public:
     return h->cell();
   }
 private:
-  void _cut_cell(Cell * c, Point & p0, Point & p1, HalfEdge * h0, HalfEdge * h1)
+  /** p0 在 c 中，找到线段 [p0, p1] 的交点 p 和相交的半边 */
+  HalfEdge * _out_cell(Cell * c, const Point & p0, const Point & p1, Point & p)
+  {
+    bool flag = false;
+    HalfEdge * h = c->halfedge(); 
+    while(flag)
+    {
+      h = h->next();
+      flag = intersection_point_of_two_segments(p0, p1, 
+          h->node()->coordinate(), h->previous()->node()->coordinate(), p); 
+    }
+    return h;
+  }
+
+  void _cut_cell(Cell * c, const Point & p0, const Point & p1, HalfEdge * h0, HalfEdge * h1)
   {
     HalfEdge & h2 = add_halfedge();
     HalfEdge & h3 = add_halfedge();
@@ -130,24 +144,15 @@ private:
     HalfEdge & h5 = add_halfedge();
   }
 
-  void _cut_by_line(const Point & p0, const Point & p1, Cell * c0, Cell * c1)
+  /** 线段 [p0, p1] 与网格相交 */
+  void _cut_by_segment(const Point & p0, const Point & p1, Cell * c0, Cell * c1)
   {
-    if(c0!=c1)
+    Point p(0.0, 0.0);
+    HalfEdge * h = _out_cell(c0, p0, p1, p);
+    refine_halfedge(h, p);
+    while(true)
     {
-      bool flag = false;
-      Point p(0.0, 0.0);
-      HalfEdge * h = c0->halfedge(); 
-      while(flag)
-      {
-        h = h->next();
-        flag = intersection_point_of_two_segments(p0, p1, 
-            h->node()->coordinate(), h->previous()->node()->coordinate(), p); 
-      }
-
-      while(true)
-      {
-        if()
-      }
+      if()
     }
   }
 

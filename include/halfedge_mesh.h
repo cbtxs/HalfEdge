@@ -81,6 +81,13 @@ public:
   }
 
   /** 加密半边 */
+  void refine_halfedge(HalfEdge * h)
+  {
+    refine_halfedge(h, (h->node()->coordinate() + 
+          h->previous()->node()->coordinate())*0.5);
+  }
+
+  /** 加密半边 */
   void refine_halfedge(HalfEdge * h, const Point & p)
   {
     HalfEdge * o = h->opposite();
@@ -102,6 +109,15 @@ public:
     o->previous()->set_next(&h1);
     o->set_previous(&h1);
     o->set_opposite(&h0);
+  }
+
+  /** 连接 h0 和 h1 的顶点分割单元 c */
+  void cut_cell(Cell * c, HalfEdge * h0, HalfEdge * h1)
+  {
+    HalfEdge * newh0 = &add_halfedge();
+    HalfEdge * newh1 = &add_halfedge();
+    newh0.reset(h1)
+
   }
 
   /** @brief 清空网格, 但实际上没有释放内存 */
