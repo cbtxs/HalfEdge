@@ -121,8 +121,10 @@ public:
     }
     return h->cell();
   }
+
 private:
-  /** p0 在 c 中，找到线段 [p0, p1] 的交点 p 和相交的半边 */
+  /** p0 在 c 中，找到线段 [p0, p1] 的交点 p 和相交的半边, 需要注意，p0 在 c
+   * 中 p1*/
   HalfEdge * _out_cell(Cell * c, const Point & p0, const Point & p1, Point & p)
   {
     bool flag = false;
@@ -136,24 +138,24 @@ private:
     return h;
   }
 
-  void _cut_cell(Cell * c, const Point & p0, const Point & p1, HalfEdge * h0, HalfEdge * h1)
-  {
-    HalfEdge & h2 = add_halfedge();
-    HalfEdge & h3 = add_halfedge();
-    HalfEdge & h4 = add_halfedge();
-    HalfEdge & h5 = add_halfedge();
-  }
-
   /** 线段 [p0, p1] 与网格相交 */
-  void _cut_by_segment(const Point & p0, const Point & p1, Cell * c0, Cell * c1)
+  HalfEdge * _cut_by_segment(const Point & p0, const Point & p1, Cell * c0, Cell * c1, HalfEdge * h0)
   {
     Point p(0.0, 0.0);
-    HalfEdge * h = _out_cell(c0, p0, p1, p);
-    refine_halfedge(h, p);
-    while(true)
-    {
-      if()
+    c0 = h0->cell();
+    c0->set_halfedge(h0->next()->next());
+
+    HalfEdge * h1;
+    while(c0 != c1)
+    { 
+      h1 = _out_cell(c0, p0, p1, p);
+      splite_halfedge(h1, p);
+      h1 = h1->previous();
+      splite_cell(c0, h0, h1);
+      h0 = h1->opposite()->previous();
+      c0 = h0->cell();
     }
+    return h0;
   }
 
 private:
@@ -169,13 +171,33 @@ void CutUniformMesh::cut_by_interface(double * point, std::vector<bool> & is_fix
   Cell * c0 = find_point(p0);
   Cell * c1 = find_point(p1); 
 
-  while()
-    if(c0==c1)
-      p1 = Point(point[2*interface[1]], point[2*interface[1]+1]);
-    else
+  HalfEdge * h0 = nullptr, * h1 = nullptr;
+  std::vector<Point> fixed_point;
+  for(uint32_t i = 2; i < N;)
+  {
+    while(c0==c1)
+    {
+      if(is_fixed_point[interface[i-1]])
+        fixed_point.push_back(p0);
+      p0 = p1;
+      p1 = Point(point[2*interface[i]], point[2*interface[i]+1]);
+      c1 = find_point(p1); 
+      i++;
+    }
 
+    Point p(0.0, 0.0);
+    h0 = _out_cell(c0, p0, p1, p);
+    splite_halfedge(h0, p);
+    h0 = h0->previous();
+    if(h1 != nullptr)
+    {
+      splite_cell(c0, h0, h1);
+      HalfEdge * h0next = h0->next();
+      for(auto & p : fixed_point)
+        splite_halfedge(h0next, p);
+    }
+    h1 = _cut_by_segment(p0, p1, c0, c1, h0->opposite()->previous());
   }
-
 }
 
 

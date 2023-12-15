@@ -19,4 +19,16 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 message("CMAKE_BUILD_TYPE : " ${CMAKE_BUILD_TYPE})
 
+# 查找 Cairo 库
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(CAIROMM REQUIRED cairomm-1.0)
+if (CAIROMM_FOUND)
+    message(STATUS "Cairo found. Version: ${CAIROMM_VERSION}")
+else()
+    message(FATAL_ERROR "Cairo not found. Please install Cairo and try again.")
+endif()
+
+include_directories(${CAIROMM_INCLUDE_DIRS})
+link_directories(${CAIROMM_LIBRARY_DIRS})
+
 add_subdirectory(test)

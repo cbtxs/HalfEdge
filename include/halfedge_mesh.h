@@ -81,14 +81,14 @@ public:
   }
 
   /** 加密半边 */
-  void refine_halfedge(HalfEdge * h)
+  void splite_halfedge(HalfEdge * h)
   {
-    refine_halfedge(h, (h->node()->coordinate() + 
+    splite_halfedge(h, (h->node()->coordinate() + 
           h->previous()->node()->coordinate())*0.5);
   }
 
   /** 加密半边 */
-  void refine_halfedge(HalfEdge * h, const Point & p)
+  void splite_halfedge(HalfEdge * h, const Point & p)
   {
     HalfEdge * o = h->opposite();
 
@@ -100,8 +100,8 @@ public:
     e.set_halfedge(o);
     n.reset(n.index(), &h0, p);
 
-    h0.reset(h, h->previous(), h->opposite(), h->cell(), &e, &n, h0.index());
-    h1.reset(o, o->previous(), o->opposite(), o->cell(), o->edge(), &n, h1.index());
+    h0.reset(h, h->previous(), o, h->cell(), &e, &n, h0.index());
+    h1.reset(o, o->previous(), h, o->cell(), o->edge(), &n, h1.index());
 
     h->previous()->set_next(&h0);
     h->set_previous(&h0);
@@ -112,12 +112,24 @@ public:
   }
 
   /** 连接 h0 和 h1 的顶点分割单元 c */
-  void cut_cell(Cell * c, HalfEdge * h0, HalfEdge * h1)
+  void splite_cell(Cell * c0, HalfEdge * h0, HalfEdge * h1)
   {
-    HalfEdge * newh0 = &add_halfedge();
-    HalfEdge * newh1 = &add_halfedge();
-    newh0.reset(h1)
+    HalfEdge * nh0 = &add_halfedge();
+    HalfEdge * nh1 = &add_halfedge();
+    Edge * e = &add_edge();
+    Cell * c1 = &add_cell();
 
+    e->set_halfedge(nh0);
+
+    nh0->reset(h1->next(), h0, nh1, c0, e, h1->node(), nh0->index());
+    nh1->reset(h0->next(), h1, nh0, c1, e, h0->node(), nh1->index());
+
+    h0->next()->set_previous(nh1);
+    h1->next()->set_previous(nh0);
+    h0->set_next(nh0);
+    h1->set_next(nh1);
+    for(HalfEdge * h = nh1->next(); h != nh1; h = h->next())
+      h->set_cell(c1); 
   }
 
   /** @brief 清空网格, 但实际上没有释放内存 */
