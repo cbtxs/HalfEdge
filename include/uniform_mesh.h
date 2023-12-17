@@ -13,11 +13,8 @@ public:
 
   struct Parameter 
   {
-    Parameter(double _ox, double _oy, double _hx, 
-              double _hy, uint32_t _nx, uint32_t _ny): 
-              orignx(_ox), origny(_oy), hx(_hx), 
-              hy(_hy), nx(_nx), ny(_ny) 
-    {}
+    Parameter(double _ox, double _oy, double _hx, double _hy, uint32_t _nx, uint32_t _ny): 
+              orignx(_ox), origny(_oy), hx(_hx), hy(_hy), nx(_nx), ny(_ny) {}
 
     double orignx;
     double origny;
@@ -84,7 +81,7 @@ public:
   void update()
   {
     cidx_.resize(number_of_cells());
-    auto & cell = get_cell();
+    auto & cell = *get_cell();
     for(auto & c : cell)
     {
       uint32_t idx = Base::find_point_in_uniform_mesh(c.barycentary());

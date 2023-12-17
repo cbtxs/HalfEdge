@@ -6,3 +6,4 @@ add_executable(test_data_container test_data_container.cpp)
 
 add_executable(test_plot test_plot.cpp)
 target_link_libraries(test_plot ${CAIROMM_LIBRARIES})
+target_link_libraries(test_halfedgemesh ${CAIROMM_LIBRARIES})

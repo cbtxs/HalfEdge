@@ -92,8 +92,7 @@ public:
 
   void release()
   {
-    for(auto & data : data_)
-      data.reset();
+    data_.clear();
     free_index_.clear();
     data_number_ = 0;
   }
@@ -157,7 +156,7 @@ public:
         ptr->resize(size()+1);
       //is_free_->push_back_false();
       is_free_->push_back(0);
-      return size();
+      return size()-1;
     }
   }
 
@@ -175,6 +174,63 @@ private:
 
   /** 数据使用 shared_ptr 管理 */
   std::vector<std::shared_ptr<ArrayBase>> data_;
+};
+
+template<typename Entity, uint32_t CHUNK_SIZE>
+class EntityDataContainer : public DataContainer<CHUNK_SIZE>
+{
+public:
+  using Base = DataContainer<CHUNK_SIZE>;
+  using Self = EntityDataContainer<Entity, CHUNK_SIZE>;
+  template<typename T>
+  using DataArray = typename Base::template DataArray<T>;
+
+public:
+  EntityDataContainer(uint32_t size=0): Base(size)
+  {
+    entity_ = Base::template add_data<Entity>("entity");
+    indices_ = Base::template add_data<uint32_t>("indices");
+  }
+
+  std::shared_ptr<DataArray<Entity> > get_entity() { return entity_;}
+
+  const std::shared_ptr<DataArray<Entity> > get_entity() const  { return entity_;}
+
+  std::shared_ptr<DataArray<uint32_t> > get_entity_indices() { return indices_;}
+
+  const std::shared_ptr<DataArray<uint32_t> > get_entity_indices() const  { return indices_;}
+
+  Entity & add_entity()
+  {
+    uint32_t idx = Base::add_index();
+    entity_->get(idx).set_index(idx);
+    return entity_->get(idx);
+  }
+
+  void delete_entity(Entity & e)
+  {
+    delete_index(e->index());
+  }
+
+  void update()
+  {
+    entity_ = Base::template get_data<Entity>("entity");
+    indices_ = Base::template get_data<uint32_t>("indices");
+    uint32_t N = 0;
+    for(auto & idx : *indices_)
+      idx = N++;
+  }
+
+  void clear()
+  {
+    Base::clear();
+    entity_ = Base::template add_data<Entity>("entity");
+    indices_ = Base::template add_data<uint32_t>("indices");
+  }
+
+private:
+  std::shared_ptr<DataArray<Entity> > entity_;
+  std::shared_ptr<DataArray<uint32_t> > indices_;
 };
 
 }

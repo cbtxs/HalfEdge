@@ -1,11 +1,10 @@
 #ifndef _HalfEdge_MESH_BASE_
 #define _HalfEdge_MESH_BASE_
 
-#include <memory>
 #include <map>
+#include <memory>
 
 #include "data_container.h"
-#include "tuple_type_index.h"
 #include "geometry.h"
 
 namespace HEM
@@ -20,21 +19,21 @@ public:
   using HalfEdge = H;
 
   using Self = HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge>;
-  using DataContainer = DataContainer<1024u>;
+  using NodeDataContainer = EntityDataContainer<Node, 1024u>;
+  using EdgeDataContainer = EntityDataContainer<Edge, 1024u>;
+  using CellDataContainer = EntityDataContainer<Cell, 1024u>;
+  using HalfEdgeDataContainer = EntityDataContainer<HalfEdge, 1024u>;
+
   template<typename T>
-  using Array = DataContainer::DataArray<T>;
+  using Array = typename NodeDataContainer::Base::template DataArray<T>;
 
 public:
-  HalfEdgeMeshBase()
+  HalfEdgeMeshBase() 
   {
-    nodes_ptr_ = node_data_ptr_->add_data<Node>("node");
-    edges_ptr_ = edge_data_ptr_->add_data<Edge>("edge");
-    cells_ptr_ = cell_data_ptr_->add_data<Cell>("cell");
-    halfedges_ptr_ = halfedge_data_ptr_->add_data<HalfEdge>("halfedge");
-
-    node_indices_ptr_ = node_data_ptr_->add_data<uint32_t>("indices");
-    edge_indices_ptr_ = edge_data_ptr_->add_data<uint32_t>("indices");
-    cell_indices_ptr_ = cell_data_ptr_->add_data<uint32_t>("indices");
+    node_data_ptr_ = std::make_shared<NodeDataContainer>();
+    edge_data_ptr_ = std::make_shared<EdgeDataContainer>();
+    cell_data_ptr_ = std::make_shared<CellDataContainer>();
+    halfedge_data_ptr_ = std::make_shared<HalfEdgeDataContainer>();
   }
 
   /** 复制构造函数 */
@@ -51,33 +50,72 @@ public:
   void reinit(double * node, uint32_t * cell, uint32_t NN, uint32_t NC, uint32_t NV);
 
   /** 实体接口 */
-  Array<Node> & get_node() { return *nodes_ptr_; }
-  Array<Edge> & get_edge() { return *edges_ptr_; }
-  Array<Cell> & get_cell() { return *cells_ptr_; }
-  Array<HalfEdge> & get_halfedge() { return *halfedges_ptr_; }
+  std::shared_ptr<Array<Node>> get_node() { return node_data_ptr_->get_entity(); }
+
+  std::shared_ptr<Array<Edge>> get_edge() { return edge_data_ptr_->get_entity(); }
+
+  std::shared_ptr<Array<Cell>> get_cell() { return cell_data_ptr_->get_entity(); }
+
+  std::shared_ptr<Array<HalfEdge>> get_halfedge() { return halfedge_data_ptr_->get_entity(); }
 
   /** 删除实体 */
   void delete_node(Node & n) { node_data_ptr_->delete_index(n.index());}
+
   void delete_edge(Edge & e) { edge_data_ptr_->delete_index(e.index());}
+
   void delete_cell(Cell & c) { cell_data_ptr_->delete_index(c.index());}
+
   void delete_halfedge(HalfEdge & h) { halfedge_data_ptr_->delete_index(h.index()); }
 
   /** 添加实体 */
-  Node & add_node() { return nodes_ptr_->get(node_data_ptr_->add_index()); }
-  Edge & add_edge() { return edges_ptr_->get(edge_data_ptr_->add_index()); }
-  Cell & add_cell() { return cells_ptr_->get(cell_data_ptr_->add_index()); }
-  HalfEdge & add_halfedge() { return halfedges_ptr_->get(halfedge_data_ptr_->add_index()); }
+  Node & add_node() { return node_data_ptr_->add_entity(); }
+
+  Edge & add_edge() { return edge_data_ptr_->add_entity(); }
+
+  Cell & add_cell() { return cell_data_ptr_->add_entity(); }
+
+  HalfEdge & add_halfedge() { return halfedge_data_ptr_->add_entity(); }
+
+  /** 获取实体编号 */
+  std::shared_ptr<Array<uint32_t>> get_node_indices() { return node_data_ptr_->get_entity_indices(); }
+
+  std::shared_ptr<Array<uint32_t>> get_edge_indices() { return edge_data_ptr_->get_entity_indices(); }
+
+  std::shared_ptr<Array<uint32_t>> get_cell_indices() { return cell_data_ptr_->get_entity_indices(); }
+
+  std::shared_ptr<Array<uint32_t>> get_halfedge_indices() { return halfedge_data_ptr_->get_entity_indices(); }
 
   /** 实体个数 */
   uint32_t number_of_nodes() { return node_data_ptr_->number_of_data(); }
+
   uint32_t number_of_edges() { return edge_data_ptr_->number_of_data(); }
+
   uint32_t number_of_cells() { return cell_data_ptr_->number_of_data(); }
+
   uint32_t number_of_halfedges() { return halfedge_data_ptr_->number_of_data(); }
+
   uint32_t number_of_boundary_edges() 
   { 
     uint32_t NE = edge_data_ptr_->number_of_data();
     uint32_t NHE = halfedge_data_ptr_->number_of_data();
     return NE*2-NHE;
+  }
+
+  std::array<double, 4> get_box()
+  {
+    std::array<double, 4> box = {-1e-100};
+    auto & node = *get_node();
+    for(const auto & n : node)
+    {
+      box[0] = box[0]<n.coordinate().x ? box[0] : n.coordinate().x; 
+      box[2] = box[2]>n.coordinate().x ? box[2] : n.coordinate().x; 
+      box[1] = box[1]<n.coordinate().y ? box[1] : n.coordinate().y; 
+      box[3] = box[3]>n.coordinate().y ? box[3] : n.coordinate().y; 
+    }
+    box[2] = box[2] - box[0]; box[3] = box[3] - box[1];
+    box[0] = box[0]-box[2]*0.05; box[1] = box[1]-box[3]*0.05;
+    box[2] *= 1.1; box[3] *= 1.1;
+    return box;
   }
 
   /** 加密半边 */
@@ -98,7 +136,7 @@ public:
     HalfEdge & h1 = add_halfedge();
 
     e.set_halfedge(o);
-    n.reset(n.index(), &h0, p);
+    n.reset(p, n.index(), &h0);
 
     h0.reset(h, h->previous(), o, h->cell(), &e, &n, h0.index());
     h1.reset(o, o->previous(), h, o->cell(), o->edge(), &n, h1.index());
@@ -156,37 +194,24 @@ public:
     std::swap(edge_data_ptr_, other.edge_data_);
     std::swap(cell_data_ptr_, other.cell_data_);
     std::swap(halfedge_data_ptr_, other.halfedge_data_);
-    update();
   }
 
   void update()
   {
-    nodes_ptr_ = node_data_ptr_->get_data<Node>("node");
-    edges_ptr_ = edge_data_ptr_->get_data<Edge>("edge");
-    cells_ptr_ = cell_data_ptr_->get_data<Cell>("cell");
-    halfedges_ptr_ = halfedge_data_ptr_->get_data<HalfEdge>("halfedge");
-    node_indices_ptr_ = node_data_ptr_->get_data<uint32_t>("indices");
-    edge_indices_ptr_ = edge_data_ptr_->get_data<uint32_t>("indices");
-    cell_indices_ptr_ = cell_data_ptr_->get_data<uint32_t>("indices");
+    node_data_ptr_->update();
+    edge_data_ptr_->update();
+    cell_data_ptr_->update();
+    halfedge_data_ptr_->update();
   }
 
   Self & operator = (const Self & other);
 
 private:
   /** 实体数据集合 */
-  std::shared_ptr<DataContainer> node_data_ptr_; 
-  std::shared_ptr<DataContainer> edge_data_ptr_;
-  std::shared_ptr<DataContainer> cell_data_ptr_;
-  std::shared_ptr<DataContainer> halfedge_data_ptr_;
-
-  /** 方便使用的指针 */
-  std::shared_ptr<Array<Node>> nodes_ptr_;
-  std::shared_ptr<Array<Edge>>  edges_ptr_;
-  std::shared_ptr<Array<Cell>>   cells_ptr_;
-  std::shared_ptr<Array<HalfEdge>> halfedges_ptr_;
-  std::shared_ptr<Array<uint32_t>> node_indices_ptr_;
-  std::shared_ptr<Array<uint32_t>>  edge_indices_ptr_;
-  std::shared_ptr<Array<uint32_t>>  cell_indices_ptr_;
+  std::shared_ptr<NodeDataContainer> node_data_ptr_; 
+  std::shared_ptr<EdgeDataContainer> edge_data_ptr_;
+  std::shared_ptr<CellDataContainer> cell_data_ptr_;
+  std::shared_ptr<HalfEdgeDataContainer> halfedge_data_ptr_;
 };
 
 /** 复制构造函数 */
@@ -235,7 +260,7 @@ void HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge>::reinit(double * node, uint32_
     uint32_t NN, uint32_t NC, uint32_t NV)
 {
   clear();
-  auto & node_ = get_node();
+  auto & node_ = *(get_node());
   for(uint32_t i = 0; i < NN; i++)
   {
     Node * n = &add_node();
@@ -259,8 +284,9 @@ void HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge>::reinit(double * node, uint32_
       c2h[j] = &add_halfedge();
     for(uint32_t j = 0; j < NV; j++)
     {
-      c2h[j]->reset(c2h[nextidx[j]], c2h[previdx[j]], c2h[j], &c, nullptr, &node_[i*NV+j], i*NV+j);
-      n2n[cell[i*NV+previdx[j]]].emplace(std::pair<uint32_t, HalfEdge * >(j, c2h[j]));
+      c2h[j]->reset(c2h[nextidx[j]], c2h[previdx[j]], c2h[j], &c, nullptr, &node_[cell[i*NV+j]], c2h[j]->index());
+      n2n[cell[i*NV+previdx[j]]].emplace(std::pair<uint32_t, HalfEdge * >(cell[i*NV+j], c2h[j]));
+      node_[cell[i*NV+j]].set_halfedge(c2h[j]);
     }
     c.reset(i, c2h[0]);
   }
@@ -268,7 +294,6 @@ void HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge>::reinit(double * node, uint32_
   /** 生成 edge, opposite_halfedge, halfedge_to_edge, node 的半边 */
   for(uint32_t i = 0; i < NN; i++)
   {
-    node_[n2n[i].begin()->first].set_halfedge(n2n[i].begin()->second);
     for(auto & it : n2n[i])
     {
       if(it.second->edge() == nullptr)
@@ -286,6 +311,7 @@ void HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge>::reinit(double * node, uint32_
       }
     }
   }
+  update();
 }
 
 template<typename Node, typename Edge, typename Cell, typename HalfEdge>
