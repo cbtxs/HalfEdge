@@ -128,25 +128,32 @@ public:
   /** 加密半边 */
   void splite_halfedge(HalfEdge * h, const Point & p)
   {
-    HalfEdge * o = h->opposite();
-
     Node & n = add_node();
     Edge & e = add_edge();
     HalfEdge & h0 = add_halfedge();
-    HalfEdge & h1 = add_halfedge();
 
-    e.set_halfedge(o);
+    e.set_halfedge(&h0);
     n.reset(p, n.index(), &h0);
 
-    h0.reset(h, h->previous(), o, h->cell(), &e, &n, h0.index());
-    h1.reset(o, o->previous(), h, o->cell(), o->edge(), &n, h1.index());
+    h0.reset(h, h->previous(), &h0, h->cell(), &e, &n, h0.index());
 
     h->previous()->set_next(&h0);
     h->set_previous(&h0);
-    h->set_opposite(&h1);
-    o->previous()->set_next(&h1);
-    o->set_previous(&h1);
-    o->set_opposite(&h0);
+    h->edge()->set_halfedge(h);
+    if(!h->is_boundary())
+    {
+      HalfEdge & h1 = add_halfedge();
+      HalfEdge * o = h->opposite();
+
+      h->set_opposite(&h1);
+      h0.set_opposite(o);
+      h1.reset(o, o->previous(), h, o->cell(), o->edge(), &n, h1.index());
+
+      o->previous()->set_next(&h1);
+      o->set_previous(&h1);
+      o->set_opposite(&h0);
+      o->set_edge(&e);
+    }
   }
 
   /** 连接 h0 和 h1 的顶点分割单元 c */
@@ -157,6 +164,8 @@ public:
     Edge * e = &add_edge();
     Cell * c1 = &add_cell();
 
+    c0->set_halfedge(nh0);
+    c1->set_halfedge(nh1);
     e->set_halfedge(nh0);
 
     nh0->reset(h1->next(), h0, nh1, c0, e, h1->node(), nh0->index());
@@ -310,6 +319,17 @@ void HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge>::reinit(double * node, uint32_
         it.second->opposite()->set_edge(&e);
       }
     }
+  }
+  for(auto & n : node_)
+  {
+    HalfEdge * h = n.halfedge(); 
+    if(!h->is_boundary())
+    {
+      h = h->opposite()->previous();
+      while(!h->is_boundary() && h != n.halfedge())
+        h = h->opposite()->previous();
+    }
+    n.set_halfedge(h);
   }
   update();
 }

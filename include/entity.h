@@ -2,7 +2,7 @@
 #define _ENTITY_
 
 #include <stdint.h>
-#include <type_traits>
+#include <iostream>
 #include "geometry.h"
 
 namespace HEM
@@ -37,6 +37,10 @@ public:
 
   uint32_t & index() { return index_;}
 
+  HalfEdge * next_oppo() {return next_->opposite();}
+
+  HalfEdge * oppo_prev() {return oppo_->previous();}
+
   /** const 数据接口 */
   const HalfEdge * next() const {return next_;}
 
@@ -53,6 +57,10 @@ public:
   const Node * node() const {return node_;}
 
   const uint32_t & index() const { return index_;}
+
+  const HalfEdge * next_oppo() const {return next_->opposite();}
+
+  const HalfEdge * oppo_prev() const {return oppo_->previous();}
 
   template<typename Entity>
   Entity & entity()
@@ -118,7 +126,7 @@ public:
 
   Vector normal();
 
-  Point barycentary();
+  Point barycenter();
 
 private:
   /** 下一条半边, 上一条半边, 对边 */
@@ -132,6 +140,11 @@ private:
 
 class Node
 {
+public:
+  static Cell * node2cell[32];
+  static Edge * node2edge[32];
+  static Node * node2node[32];
+
 public:
   Node(uint32_t index = -1): start_(nullptr), index_(index), coordinate_(0.0, 0.0) {}
 
@@ -152,7 +165,6 @@ public:
 
   const Point & coordinate() const { return coordinate_;}
 
-
   /** 设置数据 */
   void set_coordinate(const Point & p) { coordinate_ = p;}
 
@@ -166,6 +178,8 @@ public:
     start_ = h; 
     coordinate_ = p;
   }
+
+  uint32_t get_top();
 
   Node & operator=(const Node & other)
   {
@@ -184,12 +198,20 @@ private:
   Point coordinate_;
 };
 
+Cell * Node::node2cell[32] = {nullptr};
+Edge * Node::node2edge[32] = {nullptr};
+Node * Node::node2node[32] = {nullptr};
+
+/**
+ * @brief Edge 类
+ */
 class Edge
 {
 public:
   static Node * edge2node[2];
   static Cell * edge2cell[2];
   static uint8_t edge2cellIdx[2];
+
 public:
   Edge(uint32_t index=-1, HalfEdge * h = nullptr): start_(h), index_(index) {}
 
@@ -222,7 +244,7 @@ public:
 
   Vector normal();
 
-  Point barycentary();
+  Point barycenter();
 
   double length(); 
 
@@ -231,10 +253,17 @@ private:
   uint32_t index_;
 };
 
+Node * Edge::edge2node[2] = {nullptr};
+Cell * Edge::edge2cell[2] = {nullptr};
+uint8_t Edge::edge2cellIdx[2] = {255};
+
+
+/**
+ * @brief Cell 类
+ */
 class Cell
 {
 public:
-  static uint8_t N;
   static Node * cell2node[32];
   static Edge * cell2edge[32];
   static Cell * cell2cell[32];
@@ -257,7 +286,7 @@ public:
   void reset(uint32_t index, HalfEdge * h) { index_ = index; start_ = h; }
 
   /** 获取单元的邻接关系 */
-  void get_top();
+  uint32_t get_top();
 
   Cell & operator=(const Cell & other)
   {
@@ -269,7 +298,7 @@ public:
     return *this;
   }
 
-  Point barycentary() const
+  Point barycenter() const
   {
     uint8_t n = 1;
     Point p = start_->node()->coordinate();
@@ -285,15 +314,15 @@ private:
   uint32_t index_;
 };
 
-Node * Edge::edge2node[2] = {nullptr};
-Cell * Edge::edge2cell[2] = {nullptr};
-uint8_t Edge::edge2cellIdx[2] = {255};
-
-uint8_t Cell::N = 0;
 Node * Cell::cell2node[32] = {nullptr};
 Edge * Cell::cell2edge[32] = {nullptr};
 Cell * Cell::cell2cell[32] = {nullptr};
 
+
+
+/** HalfEdge 的一些内联函数 */
+
+/** 判断一个点是不是在半边的左边 */
 inline bool HalfEdge::is_on_the_left(const Point & p)
 {
   Vector v0 = node_->coordinate()-prev_->node()->coordinate();
@@ -301,31 +330,7 @@ inline bool HalfEdge::is_on_the_left(const Point & p)
   return v0.cross(v1)>0;
 }
 
-inline void Edge::get_top()
-{
-  edge2node[0] = start_->previous()->node();
-  edge2node[1] = start_->node();
-  edge2cell[0] = start_->cell(); 
-  edge2cell[1] = start_->cell(); 
-  edge2cellIdx[0] = start_->distance(start_->cell()->halfedge());
-  edge2cellIdx[0] = start_->opposite()->distance(start_->opposite()->cell()->halfedge());
-}
-
-inline void Cell::get_top()
-{
-  N = 0;
-  cell2node[N] = start_->node();
-  cell2edge[N] = start_->edge(); 
-  cell2cell[N++] = start_->cell(); 
-  for(HalfEdge * h = start_->next(); h != start_; h = h->next())
-  {
-    cell2node[N] = h->node();
-    cell2edge[N] = h->edge(); 
-    cell2cell[N++] = h->cell(); 
-  }
-}
-
-inline Point HalfEdge::barycentary()
+inline Point HalfEdge::barycenter()
 {
   return (node()->coordinate() + previous()->node()->coordinate())*0.5;
 }
@@ -346,6 +351,35 @@ inline double HalfEdge::length()
   return tangential().length();
 }
 
+
+/** Node 的一些内联函数 */
+inline uint32_t Node::get_top()
+{
+  uint32_t N = 1;
+  node2node[0] = start_->node();
+  node2edge[0] = start_->edge(); 
+  node2cell[0] = start_->cell(); 
+  for(HalfEdge * h = start_->next_oppo(); h != start_ && !h->is_boundary(); 
+      h = h->next_oppo())
+  {
+    node2node[N] = h->node();
+    node2edge[N] = h->edge(); 
+    node2cell[N++] = h->cell(); 
+  }
+  return N;
+}
+
+/** Edge 的一些内联函数 */
+inline void Edge::get_top()
+{
+  edge2node[0] = start_->previous()->node();
+  edge2node[1] = start_->node();
+  edge2cell[0] = start_->cell(); 
+  edge2cell[1] = start_->cell(); 
+  edge2cellIdx[0] = start_->distance(start_->cell()->halfedge());
+  edge2cellIdx[0] = start_->opposite()->distance(start_->opposite()->cell()->halfedge());
+}
+
 inline double Edge::length()
 {
   return start_->length();
@@ -361,20 +395,38 @@ inline Vector Edge::normal()
   return start_->normal(); 
 }
 
-inline Point Edge::barycentary()
+inline Point Edge::barycenter()
 {
-  return start_->barycentary(); 
+  return start_->barycenter(); 
+}
+
+
+/** Cell 的一些内联函数 */
+inline uint32_t Cell::get_top()
+{
+  uint32_t N = 0;
+  cell2node[N] = start_->node();
+  cell2edge[N] = start_->edge(); 
+  cell2cell[N++] = start_->cell(); 
+  for(HalfEdge * h = start_->next(); h != start_; h = h->next())
+  {
+    cell2node[N] = h->node();
+    cell2edge[N] = h->edge(); 
+    cell2cell[N++] = h->cell(); 
+  }
+  return N;
 }
 
 inline double Cell::area()
 {
-  Vector v0 = start_->previous()->tangential();
-  Vector v1 = start_->tangential();
-  double a = v1.cross(v0);
-  for(HalfEdge * h = start_; h != start_->previous(); h = h->next())
+  Point p0 = start_->previous()->node()->coordinate();
+  Vector v0 = start_->node()->coordinate()-p0;
+  Vector v1 = start_->next()->node()->coordinate()-p0;
+  double a = v0.cross(v1);
+  for(HalfEdge * h = start_->next()->next(); h != start_->previous(); h = h->next())
   {
     v0 = v1;
-    v1 = h->next()->tangential();
+    v1 = h->node()->coordinate()-p0;
     a += v0.cross(v1);
   }
   return a/2;

@@ -57,6 +57,7 @@ void check_mesh(Mesh & m)
 
 void print(Mesh & m)
 {
+  m.update();
   uint32_t NC = m.number_of_cells();
   uint32_t NE = m.number_of_edges();
   uint32_t NN = m.number_of_nodes();
@@ -107,9 +108,9 @@ void print(Mesh & m)
   std::cout << " indices       NV        node" << std::endl;
   for(auto & c : cell)
   {
-    c.get_top();
-    std::cout << "    " << cell_indices[c.index()] << "          " << (uint32_t)c.N<< "      ";
-    for(uint8_t i = 0; i < c.N; i++)
+    uint32_t N = c.get_top();
+    std::cout << "    " << cell_indices[c.index()] << "          " << N<< "      ";
+    for(uint8_t i = 0; i < N; i++)
       std::cout << node_indices[c.cell2node[i]->index()] << "   ";
     std::cout << " " << std::endl;
   }
@@ -119,9 +120,9 @@ void print(Mesh & m)
   std::cout << " indices       NV        edge" << std::endl;
   for(auto & c : cell)
   {
-    c.get_top();
-    std::cout << "    " << cell_indices[c.index()] << "          " << (uint32_t)c.N<< "      ";
-    for(uint8_t i = 0; i < c.N; i++)
+    uint32_t N = c.get_top();
+    std::cout << "    " << cell_indices[c.index()] << "          " << N<< "      ";
+    for(uint8_t i = 0; i < N; i++)
       std::cout << edge_indices[c.cell2edge[i]->index()] << "   ";
     std::cout << " " << std::endl;
   }
@@ -176,21 +177,70 @@ void test_uniform_mesh()
   fig.draw_halfedge(mesh, true);
 }
 
-void test_cut_mesh()
+void test_splite_halfedge()
 {
-  CutUniformMesh mesh(0, 0, 0.1, 0.1, 10, 5);
-  double n[4] = {0.11, 0.21, 0.82, 0.41};
-  std::vector<uint32_t> idx0 = {0, 1};
-  std::vector<std::vector<uint32_t>> idx;
-  idx.push_back(idx0);
+  UniformMesh mesh(0, 0, 0.1, 0.1, 10, 5);
+  auto & h = (*(mesh.get_halfedge()))[147];
+  mesh.splite_halfedge(&h);
+  auto & h0 = (*(mesh.get_halfedge()))[150];
+  auto & h1 = (*(mesh.get_halfedge()))[201];
+  auto & h3 = (*(mesh.get_halfedge()))[190];
+  mesh.splite_cell(h0.cell(), &h0, &h1);
+  mesh.splite_halfedge(&h3);
 
-  std::vector<bool> fix = {false, false};
-  mesh.cut_by_interface(n ,fix, idx);
+  std::cout <<  h0.cell()->area() << std::endl;
+  std::cout <<  h.cell()->area() << std::endl;
+
   check_mesh(mesh);
   print(mesh);
   Figure fig("out", mesh.get_box());
   fig.draw_mesh(mesh, true);
   fig.draw_halfedge(mesh, true);
+  fig.draw_node(mesh, true);
+  std::cout <<  h1.cell()->area() << std::endl;
+  std::cout <<  h3.cell()->area() << std::endl;
+}
+
+void test_cut_mesh()
+{
+  double a = 0, b = 0, c = 1, d = 1;
+  uint32_t nx = 10, ny = 10;
+  double hx = (c-a)/nx, hy = (d-b)/ny;
+  CutUniformMesh mesh(0, 0, hx, hy, nx, ny);
+  double n[10] = {0.45001, 0.25001, 0.45, 0.4, 0.75, 0.4, 0.75, 0.2, 0.45, 0.2};
+  std::vector<uint32_t> idx0 = {0, 1, 2, 3, 4, 0};
+
+  std::vector<std::vector<uint32_t>> idx;
+  idx.push_back(idx0);
+
+  std::vector<bool> fix = {false, true, true, true, true, false};
+  mesh.cut_by_interface(n ,fix, idx);
+  check_mesh(mesh);
+  //print(mesh);
+  Figure fig("out", mesh.get_box());
+  fig.draw_mesh(mesh, false);
+  //fig.draw_halfedge(mesh, true);
+  //fig.draw_node(mesh, true);
+}
+
+void test_bird_mesh()
+{
+  double a = 0, b = 0, c = 4, d = 1;
+  uint32_t nx = 80, ny = 20;
+  double hx = (c-a)/nx, hy = (d-b)/ny;
+  CutUniformMesh mesh(0, 0, hx, hy, nx, ny);
+  double n[20] =  {3.117, 0.49, 2.906, 0.523, 2.25, 0.32,
+         2.062, 0.807, 1.98, 0.333, 1.781, 0.847,
+         1.753, 0.377, 1.003, 0.312, 2.438, 0.177, 2.875, 0.477};
+  std::vector<uint32_t> idx0 = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0};
+  std::vector<std::vector<uint32_t>> idx;
+  idx.push_back(idx0);
+
+  std::vector<bool> fix(10, true);
+  mesh.cut_by_interface(n ,fix, idx);
+  check_mesh(mesh);
+  Figure fig("bird", mesh.get_box());
+  fig.draw_mesh(mesh, false);
 }
 
 int main()
@@ -198,4 +248,6 @@ int main()
   //test_uniform_mesh();
   test_cut_mesh();
   //test_simple_mesh();
+  //test_splite_halfedge();
+  test_bird_mesh();
 }

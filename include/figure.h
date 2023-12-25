@@ -10,13 +10,13 @@ public:
   Figure(std::string name = "out", std::array<double, 4> param = {0, 0, 400, 400})
   {
     double x = param[0], y = param[1], dx = param[2], dy = param[3];
-    double scal = (dx>600?dx:600) / dx;
-    dx = dx * scal; dy = dy * scal;
+    scal_ = (dx>1920?dx:1920) / dx;
+    dx = dx * scal_; dy = dy * scal_;
 
     surface_ = Cairo::SvgSurface::create(name+".svg", dx, dy);
     cr_ = Cairo::Context::create(surface_);
     cr_->set_line_join(Cairo::LINE_JOIN_BEVEL);
-    cr_->scale(scal, -scal);
+    cr_->scale(scal_, -scal_);
     cr_->translate(0, -param[3]);
     cr_->translate(-x, -y);
   }
@@ -28,22 +28,25 @@ public:
   void draw_halfedge(Mesh & m, bool showindex = false);
 
   template<typename Mesh>
-  void draw_node(const Mesh & m, bool showindex = false);
+  void draw_node(Mesh & m, bool showindex = false);
 
   template<typename Mesh>
-  void draw_edge(const Mesh & m, bool showindex = false);
+  void draw_edge(Mesh & m, bool showindex = false);
 
 private:
-  void _show_label(double x, double y, std::string label, double ax,  double ay, double size, double a);
+  void _show_label(double x, double y, std::string label, double ax,  double ay, 
+      double size, std::array<double, 4> pcolor, std::array<double, 4> textcolor);
 
 private:
   Cairo::RefPtr<Cairo::SvgSurface> surface_;
   Cairo::RefPtr<Cairo::Context> cr_;
+  double scal_;
 };
 
-void Figure::_show_label(double x, double y, std::string label, double ax,  double ay, double size, double a)
+void Figure::_show_label(double x, double y, std::string label, double ax,  double ay, double size, 
+    std::array<double, 4> pcolor, std::array<double, 4> textcolor)
 {
-  cr_->set_source_rgba(0, 0, 1, a);  /**< RGBA */
+  cr_->set_source_rgba(pcolor[0], pcolor[1], pcolor[2], pcolor[3]);  /**< RGBA */
 
   cr_->arc(ax, ay, size, 0, 2*M_PI); /**< 绘制点 */
   cr_->close_path();
@@ -51,7 +54,7 @@ void Figure::_show_label(double x, double y, std::string label, double ax,  doub
   cr_->set_line_width(0.0);
   cr_->stroke();
 
-  cr_->set_source_rgb(0, 0, 0); /**< 设置文本的颜色 */
+  cr_->set_source_rgba(textcolor[0], textcolor[1], textcolor[2], textcolor[3]);  /**< RGBA */
 
   cr_->select_font_face("Sans", Cairo::FONT_SLANT_NORMAL, Cairo::FONT_WEIGHT_NORMAL);
   cr_->set_font_matrix(Cairo::Matrix(size*4, 0, 0, -size*4, 0, 0));
@@ -89,10 +92,12 @@ void Figure::draw_mesh(Mesh & m, bool showindex)
   if(showindex)
   {
     n = 0;
+    std::array<double, 4> pcolor = {0, 0, 1, 0.5};
+    std::array<double, 4> textcolor = {0, 0, 0, 1};
     for(auto & c : cell)
     {
-      auto p = c.barycentary();
-      _show_label(p.x, p.y, std::to_string(n), p.x, p.y, 0.02*ch[n], 0.5);
+      auto p = c.barycenter();
+      _show_label(p.x, p.y, std::to_string(n), p.x, p.y, 0.024*ch[n], pcolor, textcolor);
       n++;
     }
   }
@@ -105,18 +110,21 @@ void Figure::draw_halfedge(Mesh & m, bool showindex)
   auto & halfedge = *(m.get_halfedge());
   for(auto & h : halfedge)
   {
+    double l = std::sqrt(std::min(h.cell()->area(), h.opposite()->cell()->area()));
+    double l0 = std::sqrt(std::max(h.cell()->area(), h.opposite()->cell()->area()));
+
     auto normal = h.normal()*0.8;
     auto tangen = h.tangential()*0.8;
-    auto p0 = h.previous()->node()->coordinate()+normal*0.02 + tangen*0.1;
+    auto p0 = h.previous()->node()->coordinate()+normal.normalize()*(l*0.025+l0*0.005) + tangen*(1.0/8.0);
     auto p1 = p0 + tangen;
     if(h.edge()->halfedge()==&h)
       cr_->set_source_rgb(1, 0, 0);
     else
       cr_->set_source_rgb(0, 0, 0);
 
-    double l = std::sqrt(std::min(h.cell()->area(), h.opposite()->cell()->area()));
     cr_->set_line_width(0.01*l); /**< 获取多边形的尺寸并调整 linewidth 为尺寸的 0.008 倍*/
 
+    /** [p0, p1] 半边的杆 */
     cr_->move_to(p0.x, p0.y);
     cr_->line_to(p1.x, p1.y);
     cr_->stroke();  
@@ -124,8 +132,9 @@ void Figure::draw_halfedge(Mesh & m, bool showindex)
     normal = normal.normalize()*l;
     tangen = tangen.normalize()*l;
 
+    /** [p4, p2, p3]  半边的头 */
     auto p2 = p1 - tangen*0.05 - normal*0.005; 
-    auto p4 = p1 + tangen*0.03 - normal*0.005;
+    auto p4 = p1 + tangen*0.024 - normal*0.005;
     cr_->move_to(p4.x, p4.y);
     cr_->line_to(p2.x, p2.y);
 
@@ -140,24 +149,62 @@ void Figure::draw_halfedge(Mesh & m, bool showindex)
   }
   if(showindex)
   {
+    std::array<double, 4> pcolor = {0, 0, 1, 0.5};
+    std::array<double, 4> textcolor = {0, 0, 0, 1};
     for(auto & h : halfedge)
     {
-      auto p = h.barycentary();
+      double l = std::sqrt(std::min(h.cell()->area(), h.opposite()->cell()->area()));
+      double l0 = std::sqrt(std::max(h.cell()->area(), h.opposite()->cell()->area()));
+
+      auto p = h.barycenter();
       auto normal = h.normal();
       auto tangen = h.tangential();
-      double size = 0.02*std::sqrt(std::min(h.cell()->area(), h.opposite()->cell()->area()));
-      p += normal*0.016;
+      double size = 0.018*l;
+      p += normal.normalize()*(l*0.025+l0*0.005);
 
-      double s = std::log(n)/std::log(10)+1;
       double x = p.x, y = p.y;
       normal = normal.normalize();
-      if(tangen.y > 0)
+
+      /** 下面四行是获得字符的大小，确定字符放什么位置 */
+      cr_->set_font_size(size*4);
+      cr_->select_font_face("Sans", Cairo::FONT_SLANT_NORMAL, Cairo::FONT_WEIGHT_NORMAL);
+      Cairo::TextExtents extents;
+      cr_->get_text_extents(std::to_string(n), extents);
+      if(tangen.x > 0)
       {
-        std::cout << n << " " << s << std::endl;
-        x += normal.x*size*s*2;
-        y += normal.y*size*s*2;
+        if(tangen.y > 0)
+          x -= extents.width*1.1;
       }
-      _show_label(x, y, std::to_string(n), p.x, p.y, size, 0.5);
+      else
+      {
+        y -= extents.height*1.1;
+        if(tangen.y > 0)
+          x -= extents.width*1.1;
+      }
+      _show_label(x, y, std::to_string(n), p.x, p.y, size, pcolor, textcolor);
+      n++;
+    }
+  }
+}
+
+template<typename Mesh>
+void Figure::draw_node(Mesh & m, bool showindex)
+{
+  auto & nodes = *(m.get_node());
+  if(showindex)
+  {
+    uint32_t n = 0;
+    std::array<double, 4> pcolor = {1, 0, 0, 1};
+    std::array<double, 4> textcolor = {0, 0, 0, 1};
+    for(auto & node : nodes)
+    {
+      auto p = node.coordinate();
+      double size = 1e100;
+      uint32_t N = node.get_top();
+      for(uint32_t i = 0; i < N; i++)
+        size = std::min(size, node.node2cell[i]->area());
+      size = 0.018*std::sqrt(size);
+      _show_label(p.x+size*0.5, p.y+size*0.5, std::to_string(n), p.x, p.y, size, pcolor, textcolor);
       n++;
     }
   }
