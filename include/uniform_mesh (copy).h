@@ -243,21 +243,15 @@ private:
   {
     /** 步骤 1 */ 
     uint32_t ii = 0;
+    double l = (p1-p0).length();
     double t = -1, tempt = 0.0, short_case_t = 2;
     HalfEdge * h1 = nullptr, * short_case_h1 = nullptr;
-
-    HalfEdge * endh;
-    if(h0)
-      endh = c0->halfedge();
-    else
-      endh = c0->halfedge()->previous()->previous();
-
-    for(HalfEdge * h = c0->halfedge(); h != endh || ii==0; h = h->next())
+    for(HalfEdge * h = c0->halfedge(); h != c0->halfedge() || ii==0; h = h->next())
     {
       auto & q0 = h->node()->coordinate();
       auto & q1 = h->previous()->node()->coordinate();
       bool flag = intersection_point_of_two_segments(p0, p1, q0, q1, tempt); 
-      if(flag && t < tempt && tempt < 1)
+      if(flag && t < tempt && tempt*l > eps_)
       {
         t = tempt; h1 = h;
       }

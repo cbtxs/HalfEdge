@@ -225,8 +225,8 @@ private:
 
 /** 复制构造函数 */
 template<typename Node, typename Edge, typename Cell, typename HalfEdge>
-HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge>::HalfEdgeMeshBase(const HalfEdgeMeshBase & mesh): 
-  HalfEdgeMeshBase() 
+HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge>::HalfEdgeMeshBase(
+    const HalfEdgeMeshBase & mesh): HalfEdgeMeshBase() 
 {
   //clear();
   *node_data_ptr_ = *mesh.node_data_ptr_;
