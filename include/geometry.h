@@ -92,17 +92,23 @@ using Point  = Vector2d;
 
 /** 计算两个线段 [p0, p1], [q0, q1] 的交点，交点为 (1-t)*p0 + t*p1 */
 bool intersection_point_of_two_segments(const Point & p0, const Point & p1, 
-    const Point & q0, const Point & q1, double & t)
+    const Point & q0, const Point & q1, double & t, double eps)
 {
   Vector v0 = p1-p0;
   Vector v1 = q0-q1;
   Vector v2 = q0-p0;
+  double l = v0.length();
   double v = v0.cross(v1);
-  t = v2.cross(v1)/v;
-  if(t<1+1e-15 & t>-1e-15)
+  if(std::abs(v) < 1e-14)
   {
+    return false;
+  }
+  t = v2.cross(v1)/v;
+  if(t*l<l+eps && t*l>-eps)
+  {
+    l = v1.length();
     double s = v0.cross(v2)/v;
-    if(s<1+1e-15 & s>-1e-15)
+    if(s*l<l+eps && s*l>-eps)
       return true;
   }
   return false;

@@ -80,7 +80,11 @@ public:
 public:
   CutUniformMesh(double orign_x, double orign_y, double hx, 
       double hy, uint32_t nx, uint32_t ny, double eps=1e-15):
-    Base(orign_x, orign_y, hx, hy, nx, ny), cidx_(nx*ny, 0), eps_(eps){ update(); }
+    Base(orign_x, orign_y, hx, hy, nx, ny), cidx_(nx*ny, 0), eps_(eps)
+  { 
+    eps_ = std::min(hx, hy)*1e-2;
+    update(); 
+  }
 
   void update()
   {
@@ -116,6 +120,7 @@ public:
   {
     HalfEdge * h = cidx_[Base::find_point_in_uniform_mesh(p)]->halfedge();
     HalfEdge * start = h;
+    HalfEdge * endh = h; /**< 增强鲁棒性，处理 p 在单元的顶点上或边上的情况 */
     while(true)
     {
       if(h->is_on_the_left(p))
@@ -125,37 +130,13 @@ public:
         start = h->opposite();
         h = start->next();
       }
-      if(h == start)
+      if(h == start || h==endh)
         break;
     }
     return h->cell();
   }
 
 private:
-  /** 
-   * @brief p0 在 c 中，找到线段 [p0, p1] 的交点 p 和相交的半边, 需要注意，p0 在 c
-   * 中 p1
-   */
-  HalfEdge * _out_cell(Cell * c, const Point & p0, const Point & p1, Point & p)
-  {
-    double l = (p1-p0).length();
-    double t = 0.0, return_t = -1;
-    HalfEdge * return_h = nullptr;
-    for(HalfEdge * h = c->halfedge(); h != c->halfedge() || !return_h; h = h->next())
-    {
-      auto & q0 = h->node()->coordinate();
-      auto & q1 = h->previous()->node()->coordinate();
-      bool flag = intersection_point_of_two_segments(p0, p1, q0, q1, t); 
-      if(flag && return_t < t && t*l > eps_)
-      {
-        return_t = t;
-        return_h = h;
-      }
-    }
-    p = p0*(1-return_t) + p1*return_t;
-    return return_h;
-  }
-
   /**
    * @brief 找到节点 n 周围的单元中，节点 n 上向量 v 所在的单元
    */
@@ -175,7 +156,9 @@ private:
 
   /**
    * @brief 判断 p 是否在 c 的某条边上
-   * @note 默认 p 在 c 中
+   *   - 如果 p 在某个边上, 那么返回的 hp1 是 p 所在的半边。
+   *   - 如果 p 和某个顶点重合，那么返回的 hp1 是指向与 p 重合的顶点的半边的。
+   * @note 默认 p 在 c 中, 因此 p 不在 c 中就会出 bug。
    */
   HalfEdge * _is_on_the_edge_of_cell(Cell * c, const Point & p)
   {
@@ -192,9 +175,21 @@ private:
       }
       i = 1;
     }
+    if(rh)
+    {
+      const auto & q0 = rh->previous()->node()->coordinate();
+      if((q0-p).length() < eps_) /**< 与起点重合 */
+        rh = rh->previous();
+    }
     return rh;
   }
-
+  
+  /**
+   * @brief 获取点 p 周围的单元集合 c1s. 
+   *   - 如果 p 在某个单元中，那么返回的 hp1 = nullptr。
+   *   - 如果 p 在某个边上, 那么返回的 hp1 是 p 所在的半边。
+   *   - 如果 p 和某个顶点重合，那么返回的 hp1 是指向与 p 重合的顶点的半边的。
+   */
   HalfEdge * _get_cell_of_point(Point & p, std::set<Cell * > & c1s)
   {
     Cell * c1 = find_point(p);
@@ -204,15 +199,7 @@ private:
     else
     {
       auto q1 = hp1->node()->coordinate();
-      auto q0 = hp1->previous()->node()->coordinate();
-      if((q0-p).length() < eps_) /**< 与起点重合 */
-      {
-        uint32_t N = hp1->previous()->node()->get_top();
-        for(uint32_t ii = 0; ii < N; ii++)
-          c1s.insert(hp1->previous()->node()->node2cell[ii]);
-        hp1 = hp1->opposite();
-      }
-      else if((q1-p).length() < eps_) /**< 与终点重合 */
+      if((q1-p).length() < eps_) /**< 与终点重合 */
       {
         uint32_t N = hp1->node()->get_top();
         for(uint32_t ii = 0; ii < N; ii++)
@@ -238,49 +225,32 @@ private:
    *      2.2. 如果不是顶点，那就以 p 为加密点加密半边 h1，并以连接入射点和出射
    *        点来 cut c
    */
-  std::pair<HalfEdge *, HalfEdge *> _out_cell_plus(Cell * c0, HalfEdge * h0, 
+  HalfEdge * _out_cell_plus(Cell * c0, HalfEdge* & h0, 
       const Point & p0, const Point & p1, bool can_be_splite=false)
   {
     /** 步骤 1 */ 
     uint32_t ii = 0;
-    double t = -1, tempt = 0.0, short_case_t = 2;
-    HalfEdge * h1 = nullptr, * short_case_h1 = nullptr;
-
-    HalfEdge * endh;
-    if(h0)
-      endh = c0->halfedge();
-    else
-      endh = c0->halfedge()->previous()->previous();
-
-    for(HalfEdge * h = c0->halfedge(); h != endh || ii==0; h = h->next())
+    double t = -1, tempt = 0.0;
+    HalfEdge * h1 = nullptr;
+    for(HalfEdge * h = c0->halfedge(); h != c0->halfedge() || ii==0; h = h->next())
     {
-      auto & q0 = h->node()->coordinate();
-      auto & q1 = h->previous()->node()->coordinate();
-      bool flag = intersection_point_of_two_segments(p0, p1, q0, q1, tempt); 
+      auto & q0 = h->previous()->node()->coordinate();
+      auto & q1 = h->node()->coordinate();
+      bool flag = intersection_point_of_two_segments(p0, p1, q0, q1, tempt, eps_); 
       if(flag && t < tempt && tempt < 1)
       {
         t = tempt; h1 = h;
       }
-      if(tempt>1-1e-10 && tempt<short_case_t)
-      {
-        short_case_t = tempt;
-        short_case_h1 = h;
-      }
       ii = 1;
-    }
-    if(!h1)
-    {
-      t = short_case_t;  h1 = short_case_h1;
     }
     Point p = p0*(1-t) + p1*t; /**< 获得 p */
 
     /** 步骤 2 */
     if((p - h1->previous()->node()->coordinate()).length()<eps_)
       h1 = h1->previous();
-    HalfEdge * rh1 = h1;
     if((p - h1->node()->coordinate()).length()<eps_)/**< 交到顶点上 */
     {
-      rh1 = h1->next();
+
       if((h0 && h1 != h0->next() && h0 != h1->next()) || can_be_splite)
         splite_cell(c0, h0, h1);
       h0 = _find_cell_by_vector_on_node(h1->node(), p1-p0);
@@ -293,7 +263,7 @@ private:
         splite_cell(c0, h0, h1);
       h0 = h1->opposite()->previous();
     }
-    return std::pair<HalfEdge *, HalfEdge *>(h0, rh1);
+    return h1;
   }
 
   /** 线段 [p0, p1] 与网格相交 */
@@ -304,11 +274,27 @@ private:
     Cell * c0 = h0->cell();
     while(c1s.find(c0)==c1s.end())
     { 
-      h0 = _out_cell_plus(c0, h0, p, p1).first;
+      _out_cell_plus(c0, h0, p, p1);
       c0 = h0->cell();
       p = h0->node()->coordinate();
     }
     return h0;
+  }
+
+  void _transition(bool is_first, HalfEdge* & h1, HalfEdge* &h1f, 
+      std::vector<uint32_t> & interface, std::vector<Point> & fpc, uint32_t i)
+  {
+    if(is_first)
+    {
+      h1f = h1;
+      if(i>0)
+        interface.push_back(i);
+    }
+    else
+    {
+      for(auto & p : fpc)
+        splite_halfedge(h1->next(), p);
+    }
   }
 
 private:
@@ -331,67 +317,67 @@ void CutUniformMesh::cut_by_loop_interface(double * point, std::vector<bool> & i
     Point p1(point[2*interface[i]], point[2*interface[i]+1]);
     std::set<Cell * > c1s;
     HalfEdge * hp1 = _get_cell_of_point(p1, c1s);
-
-    if(!hp1 && c1s.find(c0) != c1s.end())
+    if(!hp1) /**< p1 在单元内部 */
     {
-      if(is_fixed_point[interface[i]])
-        fpc.push_back(p1);
-      p0 = p1; 
-      continue; /**< 同一个单元中的节点 */
-    }
-    else if(!hp1)
-    {
-      if(is_fixed_point[interface[i]])
-        fpn.push_back(p1);
-    }
-
-    bool flag = h0 == nullptr; /**< 判断是不是第一个单元 */
-    bool short_case = c1s.find(c0) != c1s.end();
-    auto hpair =  _out_cell_plus(c0, h0, p0, p1, !fpc.empty());
-    h0 = hpair.first, h1 = hpair.second->previous();
-    if(flag)
-    {
-      h1f = h1;
-      for(uint32_t k = 1; k < i; k++)
-        interface.push_back(k);
-    }
-    else
-    {
-      for(auto & p : fpc)
-        splite_halfedge(h1, p);
-    }
-
-    h0 = _cut_by_segment(h0->node()->coordinate(), p1, h0, c1s);
-    if(hp1) /** p1 在 hp1 上 */
-    {
-      if(!short_case)
+      if(c1s.find(c0) != c1s.end()) /**< p1 在单元内部，且和 p0 同一个单元 */
       {
-        if (hp1->cell() != h0->cell())
-          hp1 = hp1->opposite();
-        if (hp1->cell() != h0->cell())
-          hp1 = hp1->opposite();
-        while(hp1->cell() != h0->cell())
-          hp1 = hp1->next_oppo();
-        auto q1 = hp1->node()->coordinate();
-        auto q0 = hp1->previous()->node()->coordinate();
-        if((q0-p1).length() > eps_ && (q1-p1).length() > eps_)
-        {
-          splite_halfedge(hp1, p1);
-          hp1 = hp1->previous();
-        }
-        if(hp1 != h0->next() && h0 != hp1->next() && h0 != hp1)
-          splite_cell(h0->cell(), h0, hp1); 
-
-        Point _p1(point[2*interface[i+1]], point[2*interface[i+1]+1]);
-        h0 = _find_cell_by_vector_on_node(hp1->node(), _p1-p1);
-        fpn.clear();
+        if(is_fixed_point[interface[i]])
+          fpc.push_back(p1);
+        p0 = p1; 
       }
       else
       {
-        Point _p1(point[2*interface[i+1]], point[2*interface[i+1]+1]);
-        h0 = _find_cell_by_vector_on_node(h0->node(), _p1-p1);
-        fpn.clear();
+        if(is_fixed_point[interface[i]])
+          fpn.push_back(p1);
+        /** 转折 */
+        bool is_first = h0 == nullptr; /**< 判断是不是第一个单元 */
+        h1 =  _out_cell_plus(c0, h0, p0, p1, !fpc.empty());
+        _transition(is_first, h1, h1f, interface, fpc, i-1);
+        /** 连线 */
+        h0 = _cut_by_segment(h0->node()->coordinate(), p1, h0, c1s);
       }
+    }
+    else /**< p1 在边上或者点上 */
+    {
+      bool is_first = h0 == nullptr;
+      bool is_arrived = c1s.find(c0) != c1s.end();
+      if(!is_arrived) /**< 没有到达 */
+      {
+        /** 转折 */
+        h1 =  _out_cell_plus(c0, h0, p0, p1, !fpc.empty());
+        _transition(is_first, h1, h1f, interface, fpc, i-1);
+        fpc.clear();
+        /** 连线 */
+        h0 = _cut_by_segment(h0->node()->coordinate(), p1, h0, c1s);
+        c0 = h0->cell();
+      }
+
+      /** 最后一个单元的处理 */
+      auto q1 = hp1->node()->coordinate();
+      if((q1-p1).length()<eps_)
+      {
+        while(hp1->cell() != c0)
+          hp1 = hp1->next_oppo();
+      }
+      if (hp1->cell() != c0)
+        hp1 = hp1->opposite();
+      if (hp1->cell() != c0)
+        hp1 = hp1->opposite();
+      auto q0 = hp1->previous()->node()->coordinate();
+      if((q0-p1).length() > eps_ && (q1-p1).length() > eps_)
+      {
+        splite_halfedge(hp1, p1);
+        hp1 = hp1->previous();
+      }
+      if(h0 && ((hp1 != h0->next() && h0 != hp1->next() && h0 != hp1) || !fpc.empty()))
+        splite_cell(h0->cell(), h0, hp1); 
+
+      if(is_arrived)
+        _transition(is_first, hp1, h1f, interface, fpc, i-1);
+
+      Point _p1(point[2*interface[i+1]], point[2*interface[i+1]+1]);
+      h0 = _find_cell_by_vector_on_node(hp1->node(), _p1-p1);
+      fpn.clear();
     }
     c0 = h0->cell(); p0 = p1; fpc = fpn; fpn.clear();
   }

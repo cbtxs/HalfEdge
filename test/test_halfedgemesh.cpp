@@ -203,24 +203,27 @@ void test_splite_halfedge()
 
 void test_cut_mesh()
 {
-  double a = 0, b = 0, c = 1, d = 1;
-  uint32_t nx = 10, ny = 10;
+  double a = 0, b = 0, c = 1, d = 0.8;
+  uint32_t nx = 2000, ny = 1600;
   double hx = (c-a)/nx, hy = (d-b)/ny;
   CutUniformMesh mesh(0, 0, hx, hy, nx, ny);
-  double n[10] = {0.45001, 0.25001, 0.45, 0.4, 0.75, 0.4, 0.75, 0.2, 0.45, 0.2};
+
+  double n[10] = {0.451231233, 0.253, 0.45, 0.4, 0.75, 0.4, 0.75, 0.2, 0.45, 0.2};
   std::vector<uint32_t> idx0 = {0, 1, 2, 3, 4, 0};
+  //double n[10] = {0.21, 0.21, 0.452, 0.45, 0.4, 0.3};
+  //std::vector<uint32_t> idx0 = {0, 1, 2, 0};
 
   std::vector<std::vector<uint32_t>> idx;
   idx.push_back(idx0);
 
-  std::vector<bool> fix = {false, true, true, true, true, false};
+  std::vector<bool> fix = {true, true, true, true};
   mesh.cut_by_interface(n ,fix, idx);
   check_mesh(mesh);
   //print(mesh);
   Figure fig("out", mesh.get_box());
-  fig.draw_mesh(mesh, false);
-  //fig.draw_halfedge(mesh, true);
-  //fig.draw_node(mesh, true);
+  fig.draw_mesh(mesh, true);
+  fig.draw_halfedge(mesh, true);
+  fig.draw_node(mesh, true);
 }
 
 void test_bird_mesh()
@@ -240,7 +243,7 @@ void test_bird_mesh()
   mesh.cut_by_interface(n ,fix, idx);
   check_mesh(mesh);
   Figure fig("bird", mesh.get_box());
-  fig.draw_mesh(mesh, false);
+  fig.draw_mesh(mesh, true);
 }
 
 int main()
@@ -249,5 +252,5 @@ int main()
   test_cut_mesh();
   //test_simple_mesh();
   //test_splite_halfedge();
-  test_bird_mesh();
+  //test_bird_mesh();
 }
