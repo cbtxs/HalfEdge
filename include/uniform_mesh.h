@@ -82,7 +82,7 @@ public:
       double hy, uint32_t nx, uint32_t ny, double eps=1e-15):
     Base(orign_x, orign_y, hx, hy, nx, ny), cidx_(nx*ny, 0), eps_(eps)
   { 
-    eps_ = std::min(hx, hy)*1e-2;
+    eps_ = std::min(hx, hy)*1e-10;
     update(); 
   }
 
@@ -287,8 +287,7 @@ private:
     if(is_first)
     {
       h1f = h1;
-      if(i>0)
-        interface.push_back(i);
+      interface.push_back(i);
     }
     else
     {

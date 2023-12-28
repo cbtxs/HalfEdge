@@ -204,11 +204,11 @@ void test_splite_halfedge()
 void test_cut_mesh()
 {
   double a = 0, b = 0, c = 1, d = 0.8;
-  uint32_t nx = 2000, ny = 1600;
+  uint32_t nx = 20, ny = 16;
   double hx = (c-a)/nx, hy = (d-b)/ny;
   CutUniformMesh mesh(0, 0, hx, hy, nx, ny);
 
-  double n[10] = {0.451231233, 0.253, 0.45, 0.4, 0.75, 0.4, 0.75, 0.2, 0.45, 0.2};
+  double n[10] = {0.453331233, 0.202333333333333333, 0.453331233, 0.4, 0.75, 0.4, 0.75, 0.2, 0.453331233, 0.2};
   std::vector<uint32_t> idx0 = {0, 1, 2, 3, 4, 0};
   //double n[10] = {0.21, 0.21, 0.452, 0.45, 0.4, 0.3};
   //std::vector<uint32_t> idx0 = {0, 1, 2, 0};
@@ -216,7 +216,10 @@ void test_cut_mesh()
   std::vector<std::vector<uint32_t>> idx;
   idx.push_back(idx0);
 
-  std::vector<bool> fix = {true, true, true, true};
+  std::vector<bool> fix = {true, true, true, true, true, true};
+  mesh.cut_by_interface(n ,fix, idx);
+  for(uint32_t i = 1; i < 10; i+=2)
+    n[i] -= 0.03;
   mesh.cut_by_interface(n ,fix, idx);
   check_mesh(mesh);
   //print(mesh);
