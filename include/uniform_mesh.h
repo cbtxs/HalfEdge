@@ -250,7 +250,6 @@ private:
       h1 = h1->previous();
     if((p - h1->node()->coordinate()).length()<eps_)/**< 交到顶点上 */
     {
-
       if((h0 && h1 != h0->next() && h0 != h1->next()) || can_be_splite)
         splite_cell(c0, h0, h1);
       h0 = _find_cell_by_vector_on_node(h1->node(), p1-p0);
@@ -296,6 +295,60 @@ private:
     }
   }
 
+  /** 
+   * @brief 
+   * @param fnf : 第一个单元的固定点 
+   */
+  uint32_t _find_first_point(HalfEdge* & h0, HalfEdge* & h1f, double * point, 
+      std::vector<bool> & is_fixed_point, std::vector<uint32_t> & interface, 
+      std::vector<uint32_t> & fnf, bool & first_sharp_corner)
+  {
+    Point p0;
+    bool is_loop = interface[0]==interface.back();
+    uint32_t N = interface.size()-(uint32_t)is_loop;
+    std::set<Cell * > cso = {};
+    for(uint32_t i = 0; i < N; i++)
+    {
+      Point p(point[2*interface[i]], point[2*interface[i]+1]);
+      std::set<Cell * > cs;
+      HalfEdge * h = _get_cell_of_point(p, cs);
+      if(!h) /**< p1 在单元内部 */
+      {
+        Cell * c = *cs.begin();
+        if(cso.find(c)==cso.end())
+        {
+          Cell * c0 = *cso.begin();
+          h1f =  _out_cell_plus(c0, h0, p0, p);
+          return i-1;
+        }
+        else if(is_fixed_point[interface[i]])
+          fnf.push_back(interface[i]);
+      }
+      else /**< p1 在边上或者点上 */
+      {
+        auto q1 = h->node()->coordinate();
+        auto q0 = h->previous()->node()->coordinate();
+        if((q0-p).length() > eps_ && (q1-p).length() > eps_)
+        {
+          splite_halfedge(h, p);
+          h = h->previous();
+        }
+
+        Point _p0(point[2*interface[i+1]], point[2*interface[i+1]+1]);
+        HalfEdge * _h0 = _find_cell_by_vector_on_node(h->node(), _p0-p);
+        Point _p1(point[2*interface[(i-1)%N]], point[2*interface[(i-1)%N]+1]);
+        HalfEdge * _h1 = _find_cell_by_vector_on_node(h->node(), _p1-p);
+
+        first_sharp_corner = _h0->cell()==_h1->cell();
+        h1f = _h1;
+        h0 = _h0;
+        return i;
+      }
+      p0 = p;
+    }
+    return 0;
+  }
+
 private:
   std::vector<Cell * > cidx_;
   double eps_;
@@ -305,9 +358,10 @@ void CutUniformMesh::cut_by_loop_interface(double * point, std::vector<bool> & i
       std::vector<uint32_t> & interface)
 {
   std::cout << "cuting..." << std::endl;
-  uint32_t N = interface.size();
-  Point p0(point[2*interface[0]], point[2*interface[0]+1]);
-  Cell * c0 = find_point(p0);
+  bool is_loop = interface[0]==interface.back();
+  uint32_t N = interface.size()-(uint32_t)is_loop;
+
+
 
   HalfEdge * h0 = nullptr, * h1 = nullptr, * h1f = nullptr;
   std::vector<Point> fpc, fpn;
