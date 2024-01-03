@@ -17,8 +17,13 @@ public:
 
   struct Parameter 
   {
-    Parameter(double _ox, double _oy, double _hx, double _hy, uint32_t _nx, uint32_t _ny): 
-              orignx(_ox), origny(_oy), hx(_hx), hy(_hy), nx(_nx), ny(_ny) {}
+    Parameter(double _ox, double _oy, 
+              double _hx, double _hy, 
+              uint32_t _nx, uint32_t _ny): 
+              orignx(_ox), origny(_oy), 
+              hx(_hx), hy(_hy), 
+              nx(_nx), ny(_ny) 
+    {}
 
     double orignx;
     double origny;
@@ -360,8 +365,6 @@ void CutUniformMesh::cut_by_loop_interface(double * point, std::vector<bool> & i
   std::cout << "cuting..." << std::endl;
   bool is_loop = interface[0]==interface.back();
   uint32_t N = interface.size()-(uint32_t)is_loop;
-
-
 
   HalfEdge * h0 = nullptr, * h1 = nullptr, * h1f = nullptr;
   std::vector<Point> fpc, fpn;
