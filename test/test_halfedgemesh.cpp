@@ -203,10 +203,14 @@ void test_splite_halfedge()
 
 void test_cut_mesh()
 {
+  clock_t t0, t1, t2;
   double a = 0, b = 0, c = 1, d = 0.8;
-  uint32_t nx = 20, ny = 16;
+  uint32_t nx = 2000, ny = 1600;
   double hx = (c-a)/nx, hy = (d-b)/ny;
+
+  t0 = clock();
   CutUniformMesh mesh(0, 0, hx, hy, nx, ny);
+  t1 = clock();
 
   double n[10] = {0.453331233, 0.202333333333333333, 0.453331233, 0.4, 0.75, 0.4, 0.75, 0.2, 0.453331233, 0.2};
   std::vector<uint32_t> idx0 = {0, 1, 2, 3, 4, 0};
@@ -221,12 +225,15 @@ void test_cut_mesh()
   for(uint32_t i = 1; i < 10; i+=2)
     n[i] -= 0.03;
   mesh.cut_by_interface(n ,fix, idx);
+  t2 = clock();
+  std::cout << (double)(t1-t0)/CLOCKS_PER_SEC << std::endl;
+  std::cout << (double)(t2-t1)/CLOCKS_PER_SEC << std::endl;
   check_mesh(mesh);
   //print(mesh);
-  Figure fig("out", mesh.get_box());
-  fig.draw_mesh(mesh, true);
-  fig.draw_halfedge(mesh, true);
-  fig.draw_node(mesh, true);
+  //Figure fig("out", mesh.get_box());
+  //fig.draw_mesh(mesh, true);
+  //fig.draw_halfedge(mesh, true);
+  //fig.draw_node(mesh, true);
 }
 
 void test_bird_mesh()

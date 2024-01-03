@@ -241,7 +241,7 @@ private:
     {
       auto & q0 = h->previous()->node()->coordinate();
       auto & q1 = h->node()->coordinate();
-      bool flag = intersection_point_of_two_segments(p0, p1, q0, q1, tempt, eps_); 
+      bool flag = _intersection_point_of_two_segments(p0, p1, q0, q1, tempt); 
       if(flag && t < tempt && tempt < 1)
       {
         t = tempt; h1 = h;
@@ -304,8 +304,8 @@ private:
    * @brief 
    * @param fnf : 第一个单元的固定点 
    */
-  uint32_t _find_first_point(HalfEdge* & h0, HalfEdge* & h1f, double * point, 
-      std::vector<bool> & is_fixed_point, std::vector<uint32_t> & interface, 
+  uint32_t _find_first_point(HalfEdge* & h0, HalfEdge* & h1f, Point & pr, Cell* & c0, 
+      double * point, std::vector<bool> & is_fixed_point, std::vector<uint32_t> & interface, 
       std::vector<uint32_t> & fnf, bool & first_sharp_corner)
   {
     Point p0;
@@ -322,9 +322,9 @@ private:
         Cell * c = *cs.begin();
         if(cso.find(c)==cso.end())
         {
-          Cell * c0 = *cso.begin();
-          h1f =  _out_cell_plus(c0, h0, p0, p);
-          return i-1;
+          c0 = *cso.begin();
+          pr = p;
+          return i;
         }
         else if(is_fixed_point[interface[i]])
           fnf.push_back(interface[i]);
@@ -347,11 +347,42 @@ private:
         first_sharp_corner = _h0->cell()==_h1->cell();
         h1f = _h1;
         h0 = _h0;
-        return i;
+        pr = p;
+        c0 = h0->cell();
+        return i+1;
       }
       p0 = p;
     }
     return 0;
+  }
+
+  bool _is_same_point(const Point & p0, const Point & p1)
+  {
+    return (p0-p1).length()<eps_;
+  }
+
+  /** 计算两个线段 [p0, p1], [q0, q1] 的交点，交点为 (1-t)*p0 + t*p1 */
+  bool _intersection_point_of_two_segments(const Point & p0, const Point & p1, 
+      const Point & q0, const Point & q1, double & t)
+  {
+    Vector v0 = p1-p0;
+    Vector v1 = q0-q1;
+    Vector v2 = q0-p0;
+    double l = v0.length();
+    double v = v0.cross(v1);
+    if(std::abs(v/l) < eps_)
+    {
+      return false;
+    }
+    t = v2.cross(v1)/v;
+    if(t*l<l+eps_ && t*l>-eps_)
+    {
+      l = v1.length();
+      double s = v0.cross(v2)/v;
+      if(s*l<l+eps_ && s*l>-eps_)
+        return true;
+    }
+    return false;
   }
 
 private:
@@ -366,9 +397,16 @@ void CutUniformMesh::cut_by_loop_interface(double * point, std::vector<bool> & i
   bool is_loop = interface[0]==interface.back();
   uint32_t N = interface.size()-(uint32_t)is_loop;
 
+  Point p0;
+  Cell * c0;
+  bool first_sharp_corner;
+  std::vector<uint32_t> fnf;
   HalfEdge * h0 = nullptr, * h1 = nullptr, * h1f = nullptr;
+  uint32_t start = _find_first_point(h0, h1f, p0, c0, point, is_fixed_point, 
+      interface, fnf, first_sharp_corner);
+
   std::vector<Point> fpc, fpn;
-  for(uint32_t i = 1; i < N; i++)
+  for(uint32_t i = start; i < N; i++)
   {
     Point p1(point[2*interface[i]], point[2*interface[i]+1]);
     std::set<Cell * > c1s;
@@ -437,6 +475,8 @@ void CutUniformMesh::cut_by_loop_interface(double * point, std::vector<bool> & i
     }
     c0 = h0->cell(); p0 = p1; fpc = fpn; fpn.clear();
   }
+  if(first_sharp_corner)
+    h1f = h1f->next()->opposite();
   if((h1f != h0->next() && h0 != h1f->next()) || !fpc.empty())
     splite_cell(c0, h1f, h0);
   HalfEdge * h1next = h1f->next();
