@@ -90,37 +90,5 @@ public:
 using Vector = Vector2d;
 using Point  = Vector2d;
 
-/** 计算两个线段 [p0, p1], [q0, q1] 的交点，交点为 (1-t)*p0 + t*p1 */
-bool intersection_point_of_two_segments(const Point & p0, const Point & p1, 
-    const Point & q0, const Point & q1, double & t, double eps)
-{
-  Vector v0 = p1-p0;
-  Vector v1 = q0-q1;
-  Vector v2 = q0-p0;
-  double l = v0.length();
-  double v = v0.cross(v1);
-  if(std::abs(v) < 1e-14)
-  {
-    return false;
-  }
-  t = v2.cross(v1)/v;
-  if(t*l<l+eps && t*l>-eps)
-  {
-    l = v1.length();
-    double s = v0.cross(v2)/v;
-    if(s*l<l+eps && s*l>-eps)
-      return true;
-  }
-  return false;
-}
-
-/** 判断点 p 是否在 [p0, p1] 所在直线的左边 */
-inline bool is_on_the_left(const Point & p0, const Point & p1, const Point & p)
-{
-  Vector v0 = p1-p0;
-  Vector v1 = p-p0;
-  return v0.cross(v1)>0;
-}
-
 }
 #endif /* _GEOMETRY_ */ 
