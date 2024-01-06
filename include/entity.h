@@ -122,9 +122,9 @@ public:
 
   double length(); 
 
-  Vector tangential();
+  Vector tangential() const ;
 
-  Vector normal();
+  Vector normal() const;
 
   Point barycenter();
 
@@ -240,7 +240,7 @@ public:
     return *this;
   }
 
-  Vector tangential();
+  Vector tangential() const;
 
   Vector normal();
 
@@ -335,12 +335,12 @@ inline Point HalfEdge::barycenter()
   return (node()->coordinate() + previous()->node()->coordinate())*0.5;
 }
 
-inline Vector HalfEdge::tangential() 
+inline Vector HalfEdge::tangential() const 
 {
   return node()->coordinate()-previous()->node()->coordinate();
 }
 
-inline Vector HalfEdge::normal()
+inline Vector HalfEdge::normal() const
 {
   Vector t = tangential();
   return Vector(-t.y, t.x);
@@ -385,7 +385,7 @@ inline double Edge::length()
   return start_->length();
 }
 
-inline Vector Edge::tangential()
+inline Vector Edge::tangential() const
 {
   return start_->tangential();
 }

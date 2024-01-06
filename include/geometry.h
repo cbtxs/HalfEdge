@@ -82,6 +82,16 @@ public:
       return *this / mag;
     }
 
+    /**
+     * @brief 计算一个旋转矩阵 [[cost, sint], [-sint, cost]] 作用到自身的结果
+     */
+    Vector2d rotate(const double & sint, const double & cost)
+    {
+      double nx = x*cost + y*sint;
+      double ny = -x*sint + y*cost;
+      return Vector2d(nx, ny);
+    }
+
 public:
     double x;
     double y;

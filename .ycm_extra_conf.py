@@ -63,11 +63,13 @@ flags = [
     '-isystem', '/usr/lib/x86_64-linux-gnu/glib-2.0/include',
     '-isystem', '/usr/lib/x86_64-linux-gnu/cairomm-1.0/include',
     '-isystem', '/usr/lib/x86_64-linux-gnu/sigc++-2.0/include',
+    '-isystem', '/usr/lib/gcc/x86_64-linux-gnu/11/include',
     '-isystem', '/usr/include/eigen3',
     '-isystem', '/usr/local/include',
     '-isystem', mpi_include,
     '-I', '/usr/lib/x86_64-linux-gnu/openmpi/include/',
     '-I', './include',
+    '-I', './thirdparty/include',
 ] + include_flags
 
 def FlagsForFile(filename, **kwargs):

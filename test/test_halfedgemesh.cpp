@@ -38,6 +38,7 @@ void check_mesh(Mesh & m)
 
   for(auto & c : cell)
   {
+    assert(c.area()>0.0);
     for(HalfEdge * h = c.halfedge(); h != c.halfedge()->previous(); h=h->next())
       assert(h->cell()==&c);
     for(HalfEdge * h = c.halfedge(); h != c.halfedge()->next(); h=h->previous())
@@ -205,35 +206,35 @@ void test_cut_mesh()
 {
   clock_t t0, t1, t2;
   double a = 0, b = 0, c = 1, d = 0.8;
-  uint32_t nx = 2000, ny = 1600;
+  uint32_t nx = 20, ny = 16;
   double hx = (c-a)/nx, hy = (d-b)/ny;
 
   t0 = clock();
   CutUniformMesh mesh(0, 0, hx, hy, nx, ny);
   t1 = clock();
 
-  double n[10] = {0.453331233, 0.202333333333333333, 0.453331233, 0.4, 0.75, 0.4, 0.75, 0.2, 0.453331233, 0.2};
-  std::vector<uint32_t> idx0 = {0, 1, 2, 3, 4, 0};
-  //double n[10] = {0.21, 0.21, 0.452, 0.45, 0.4, 0.3};
-  //std::vector<uint32_t> idx0 = {0, 1, 2, 0};
+  std::vector<double> n = {0.45, 0.2, 0.45, 0.4, 0.75, 0.4, 0.75, 0.2};
+  std::vector<uint32_t> idx0 = {0, 1, 2, 3, 0};
+  //std::vector<double> n = {0.25, 0.2, 0.22, 0.4, 0.3, 0.27, 0.37, 0.12};
+  //std::vector<uint32_t> idx0 = {0, 1, 2, 3, 0};
 
   std::vector<std::vector<uint32_t>> idx;
   idx.push_back(idx0);
 
-  std::vector<bool> fix = {true, true, true, true, true, true};
-  mesh.cut_by_interface(n ,fix, idx);
-  for(uint32_t i = 1; i < 10; i+=2)
-    n[i] -= 0.03;
-  mesh.cut_by_interface(n ,fix, idx);
+  std::vector<bool> fix = {true, false, true, true, true, true};
+  mesh.cut_by_interface(n, fix, idx);
+  for(uint32_t i = 1; i < 8; i+=2)
+    n[i] -= 0.05;
+  mesh.cut_by_interface(n, fix, idx);
   t2 = clock();
   std::cout << (double)(t1-t0)/CLOCKS_PER_SEC << std::endl;
   std::cout << (double)(t2-t1)/CLOCKS_PER_SEC << std::endl;
   check_mesh(mesh);
   //print(mesh);
-  //Figure fig("out", mesh.get_box());
-  //fig.draw_mesh(mesh, true);
-  //fig.draw_halfedge(mesh, true);
-  //fig.draw_node(mesh, true);
+  Figure fig("out", mesh.get_box());
+  fig.draw_mesh(mesh, true);
+  fig.draw_halfedge(mesh, true);
+  fig.draw_node(mesh, true);
 }
 
 void test_bird_mesh()
@@ -242,7 +243,7 @@ void test_bird_mesh()
   uint32_t nx = 80, ny = 20;
   double hx = (c-a)/nx, hy = (d-b)/ny;
   CutUniformMesh mesh(0, 0, hx, hy, nx, ny);
-  double n[20] =  {3.117, 0.49, 2.906, 0.523, 2.25, 0.32,
+  std::vector<double> n =  {3.117, 0.49, 2.906, 0.523, 2.25, 0.32,
          2.062, 0.807, 1.98, 0.333, 1.781, 0.847,
          1.753, 0.377, 1.003, 0.312, 2.438, 0.177, 2.875, 0.477};
   std::vector<uint32_t> idx0 = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0};
@@ -250,7 +251,7 @@ void test_bird_mesh()
   idx.push_back(idx0);
 
   std::vector<bool> fix(10, true);
-  mesh.cut_by_interface(n ,fix, idx);
+  mesh.cut_by_interface(n,fix, idx);
   check_mesh(mesh);
   Figure fig("bird", mesh.get_box());
   fig.draw_mesh(mesh, true);

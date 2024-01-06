@@ -7,3 +7,12 @@ add_executable(test_data_container test_data_container.cpp)
 add_executable(test_plot test_plot.cpp)
 target_link_libraries(test_plot ${CAIROMM_LIBRARIES})
 target_link_libraries(test_halfedgemesh ${CAIROMM_LIBRARIES})
+
+add_executable(test_simd test_simd.cpp)
+target_link_libraries(test_simd ${BLAS_LIBRARIES})
+
+add_executable(test_gl test_gl.cpp)
+target_link_libraries(test_gl ${GLFW_LIBRARIES} ${OPENGL_LIBRARIES} glad)
+
+add_executable(test_gl_tri test_gl_tri.cpp)
+target_link_libraries(test_gl_tri ${GLFW_LIBRARIES} ${OPENGL_LIBRARIES} glad)
