@@ -16,7 +16,7 @@ void matrix_multiply_normal(const double* A, const double* B, double* C, int row
         for (int j = 0; j < cols; ++j) {
             double sum = 0.0f;
             for (int k = 0; k < common; ++k) {
-                sum += A[i * common + k] * B[k * cols + j];
+                sum += A[i * common + k] * B[j * cols + k];
             }
             C[i * cols + j] = sum;
         }
@@ -68,25 +68,34 @@ int main() {
     double* C_blas = new double[cnum*rows * cols];
 
     // 生成随机矩阵
+    auto start_gen = std::chrono::high_resolution_clock::now();
+    //#pragma omp parallel for
     for(uint32_t i = 0; i < cnum; i++)
     {
       generate_random_matrix(&A[i*nA], rows, common);
       generate_random_matrix(&B[i*nB], common, cols);
     }
+    auto end_gen = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed_gen = end_gen - start_gen;
+    std::cout << "Normal matrix multiplication time: " << elapsed_gen.count() << " seconds\n";
 
-    //// 普通矩阵相乘
-    //auto start_normal = std::chrono::high_resolution_clock::now();
-    //matrix_multiply_normal(A, B, C_normal, rows, cols, common);
-    //auto end_normal = std::chrono::high_resolution_clock::now();
-    //std::chrono::duration<double> elapsed_normal = end_normal - start_normal;
-    //std::cout << "Normal matrix multiplication time: " << elapsed_normal.count() << " seconds\n";
+    // 普通矩阵相乘
+    auto start_normal = std::chrono::high_resolution_clock::now();
+    #pragma omp parallel for
+    for(uint32_t i = 0; i < cnum; i++)
+      matrix_multiply_normal(&A[i*nA], &B[i*nB], &C_normal[i*nC], rows, cols, common);
+    auto end_normal = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed_normal = end_normal - start_normal;
+    std::cout << "Normal matrix multiplication time: " << elapsed_normal.count() << " seconds\n";
 
-    //// SIMD 矩阵相乘
-    //auto start_simd = std::chrono::high_resolution_clock::now();
-    //matrix_multiply_simd(A, B, C_simd, rows, cols, common);
-    //auto end_simd = std::chrono::high_resolution_clock::now();
-    //std::chrono::duration<double> elapsed_simd = end_simd - start_simd;
-    //std::cout << "SIMD matrix multiplication time: " << elapsed_simd.count() << " seconds\n";
+    // SIMD 矩阵相乘
+    auto start_simd = std::chrono::high_resolution_clock::now();
+    #pragma omp parallel for
+    for(uint32_t i = 0; i < cnum; i++)
+      matrix_multiply_simd(&A[i*nA], &B[i*nB], &C_simd[i*nC], rows, cols, common);
+    auto end_simd = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed_simd = end_simd - start_simd;
+    std::cout << "SIMD matrix multiplication time: " << elapsed_simd.count() << " seconds\n";
 
     // BLAS 矩阵相乘
     auto start_blas = std::chrono::high_resolution_clock::now();

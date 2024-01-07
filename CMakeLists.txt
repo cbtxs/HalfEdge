@@ -65,6 +65,17 @@ else()
     message(FATAL_ERROR "BLAS not found. Please install BLAS and try again.")
 endif()
 
+# OpenMP
+find_package(OpenMP REQUIRED)
+if (OPENMP_FOUND)
+    message(STATUS "OPENMP found. Version: ${OPENMP_VERSION}")
+    include_directories(${OPENMP_INCLUDE_DIRS})
+    link_directories(${OPENMP_LIBRARY_DIRS})
+else()
+    message(FATAL_ERROR "OPENMP not found. Please install OPENMP and try again.")
+endif()
+
+
 # 查找 OpenGL 库
 set(OpenGL_GL_PREFERENCE "GLVND")
 find_package(OpenGL REQUIRED)

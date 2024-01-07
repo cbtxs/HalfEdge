@@ -9,7 +9,7 @@ target_link_libraries(test_plot ${CAIROMM_LIBRARIES})
 target_link_libraries(test_halfedgemesh ${CAIROMM_LIBRARIES})
 
 add_executable(test_simd test_simd.cpp)
-target_link_libraries(test_simd ${BLAS_LIBRARIES})
+target_link_libraries(test_simd ${BLAS_LIBRARIES} OpenMP::OpenMP_CXX)
 
 add_executable(test_gl test_gl.cpp)
 target_link_libraries(test_gl ${GLFW_LIBRARIES} ${OPENGL_LIBRARIES} glad)
