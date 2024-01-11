@@ -318,8 +318,6 @@ Node * Cell::cell2node[32] = {nullptr};
 Edge * Cell::cell2edge[32] = {nullptr};
 Cell * Cell::cell2cell[32] = {nullptr};
 
-
-
 /** HalfEdge 的一些内联函数 */
 
 /** 判断一个点是不是在半边的左边 */

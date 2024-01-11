@@ -234,10 +234,10 @@ HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge>::HalfEdgeMeshBase(
   *cell_data_ptr_ = *mesh.cell_data_ptr_;
   *halfedge_data_ptr_ = *mesh.halfedge_data_ptr_;
 
-  auto & node_ = get_node(); 
-  auto & edge_ = get_edge(); 
-  auto & cell_ = get_cell(); 
-  auto & halfedge_ = get_halfedge();
+  auto & node_ = *get_node(); 
+  auto & edge_ = *get_edge(); 
+  auto & cell_ = *get_cell(); 
+  auto & halfedge_ = *get_halfedge();
   for(auto it = node_.begin(); it != node_.end(); ++it)
     it->set_halfedge(&(halfedge_[it->halfedge()->index()]));
 
@@ -249,12 +249,12 @@ HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge>::HalfEdgeMeshBase(
 
   for(auto & h : halfedge_)
   {
-    h.reset(halfedge_[h.next()->index()], 
-            halfedge_[h.previous()->index()], 
-            halfedge_[h.opposite()->index()], 
-            cell_[h.cell()->index()], 
-            edge_[h.edge()->index()], 
-            node_[h.node()->index()], 
+    h.reset(&halfedge_[h.next()->index()], 
+            &halfedge_[h.previous()->index()], 
+            &halfedge_[h.opposite()->index()], 
+            &cell_[h.cell()->index()], 
+            &edge_[h.edge()->index()], 
+            &node_[h.node()->index()], 
             h.index()); 
   }
   update();

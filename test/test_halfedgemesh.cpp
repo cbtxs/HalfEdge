@@ -4,6 +4,7 @@
 #include "halfedge_mesh.h"
 #include "figure.h"
 #include "uniform_mesh.h"
+#include "cut_mesh_algorithm.h"
 
 using namespace HEM;
 using Mesh = HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge>;
@@ -202,66 +203,115 @@ void test_splite_halfedge()
   std::cout <<  h3.cell()->area() << std::endl;
 }
 
-void test_cut_mesh()
-{
-  clock_t t0, t1, t2;
-  double a = 0, b = 0, c = 1, d = 0.8;
-  uint32_t nx = 20, ny = 16;
-  double hx = (c-a)/nx, hy = (d-b)/ny;
-
-  t0 = clock();
-  CutUniformMesh mesh(0, 0, hx, hy, nx, ny);
-  t1 = clock();
-
-  std::vector<double> n = {0.45, 0.2, 0.45, 0.4, 0.75, 0.4, 0.75, 0.2};
-  std::vector<uint32_t> idx0 = {0, 1, 2, 3, 0};
-  //std::vector<double> n = {0.25, 0.2, 0.22, 0.4, 0.3, 0.27, 0.37, 0.12};
-  //std::vector<uint32_t> idx0 = {0, 1, 2, 3, 0};
-
-  std::vector<std::vector<uint32_t>> idx;
-  idx.push_back(idx0);
-
-  std::vector<bool> fix = {true, false, true, true, true, true};
-  mesh.cut_by_interface(n, fix, idx);
-  for(uint32_t i = 1; i < 8; i+=2)
-    n[i] -= 0.05;
-  mesh.cut_by_interface(n, fix, idx);
-  t2 = clock();
-  std::cout << (double)(t1-t0)/CLOCKS_PER_SEC << std::endl;
-  std::cout << (double)(t2-t1)/CLOCKS_PER_SEC << std::endl;
-  check_mesh(mesh);
-  //print(mesh);
-  Figure fig("out", mesh.get_box());
-  fig.draw_mesh(mesh, true);
-  fig.draw_halfedge(mesh, true);
-  fig.draw_node(mesh, true);
-}
-
 void test_bird_mesh()
 {
+  using Mesh = CutMesh<UniformMesh>;
+  using CutMeshAlg = CutMeshAlgorithm<UniformMesh>;
+  using Interface = typename CutMeshAlg::Interface;
+
+  clock_t t0, t1, t2;
   double a = 0, b = 0, c = 4, d = 1;
   uint32_t nx = 80, ny = 20;
   double hx = (c-a)/nx, hy = (d-b)/ny;
-  CutUniformMesh mesh(0, 0, hx, hy, nx, ny);
+
+  t0 = clock();
+  std::shared_ptr<Mesh> meshptr = std::make_shared<Mesh>(0, 0, hx, hy, nx, ny);
+  CutMeshAlg cut(meshptr);
+  t1 = clock();
+
   std::vector<double> n =  {3.117, 0.49, 2.906, 0.523, 2.25, 0.32,
          2.062, 0.807, 1.98, 0.333, 1.781, 0.847,
          1.753, 0.377, 1.003, 0.312, 2.438, 0.177, 2.875, 0.477};
-  std::vector<uint32_t> idx0 = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0};
-  std::vector<std::vector<uint32_t>> idx;
-  idx.push_back(idx0);
-
+  std::vector<uint32_t> segments = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0};
   std::vector<bool> fix(10, true);
-  mesh.cut_by_interface(n,fix, idx);
+
+  Interface iface;
+  std::vector<Point> & points = iface.points;
+  for(uint32_t i = 0; i < n.size(); i+=2)
+    points.push_back(Point(n[i], n[i+1]));
+  iface.segments = segments;
+  iface.is_fixed_points = fix;
+
+  std::vector<Interface> ifaces;
+  ifaces.emplace_back(iface);
+
+  cut.cut_by_interfaces(ifaces);
+
+  t2 = clock();
+  std::cout << (double)(t1-t0)/CLOCKS_PER_SEC << std::endl;
+  std::cout << (double)(t2-t1)/CLOCKS_PER_SEC << std::endl;
+
+  auto & mesh = *(meshptr.get());
   check_mesh(mesh);
-  Figure fig("bird", mesh.get_box());
+  Figure fig("out", mesh.get_box());
   fig.draw_mesh(mesh, true);
+}
+
+void test_cut_mesh_algorithm()
+{
+  using Mesh = CutMesh<UniformMesh>;
+  using CutMeshAlg = CutMeshAlgorithm<UniformMesh>;
+  using Interface = typename CutMeshAlg::Interface;
+
+  clock_t t0, t1, t2;
+  double a = 0, b = 0, c = 1, d = 0.8;
+  uint32_t nx = 31, ny = 26;
+  double hx = (c-a)/nx, hy = (d-b)/ny;
+
+  t0 = clock();
+  std::shared_ptr<Mesh> meshptr = std::make_shared<Mesh>(0, 0, hx, hy, nx, ny);
+  CutMeshAlg cut(meshptr);
+  t1 = clock();
+
+  //std::vector<double> n = {0.25, 0.2, 0.22, 0.4, 0.3, 0.27, 0.37, 0.12};
+  //std::vector<uint32_t> idx0 = {0, 1, 2, 3, 0};
+  //std::vector<double> n = {0.451, 0.21, 0.452, 0.43, 0.7512, 0.4234, 0.75123, 0.21234};
+  std::vector<double> n = {0.25, 0.25, 0.25, 0.65, 0.75, 0.65, 0.75, 0.25};
+  std::vector<uint32_t> segments = {0, 1, 2, 3, 0};
+  std::vector<bool> fix = {true, true, true, true};
+
+  Interface iface;
+  std::vector<Point> & points = iface.points;
+  for(uint32_t i = 0; i < n.size(); i+=2)
+    points.push_back(Point(n[i], n[i+1]));
+  iface.segments = segments;
+  iface.is_fixed_points = fix;
+
+  std::vector<Interface> ifaces;
+  ifaces.emplace_back(iface);
+
+  cut.cut_by_interfaces(ifaces);
+
+  points.clear();
+  for(uint32_t i = 0; i < n.size(); i+=2)
+    points.push_back(Point(n[i], n[i+1]));
+  for(auto & p : points)
+    p.y -= 0.024;
+  iface.segments = segments;
+  iface.is_fixed_points = fix;
+
+  ifaces.clear();
+  ifaces.emplace_back(iface);
+  cut.cut_by_interfaces(ifaces);
+  t2 = clock();
+  std::cout << (double)(t1-t0)/CLOCKS_PER_SEC << std::endl;
+  std::cout << (double)(t2-t1)/CLOCKS_PER_SEC << std::endl;
+
+  auto & mesh = *(meshptr.get());
+  check_mesh(mesh);
+  //print(mesh);
+  Figure fig("out", mesh.get_box());
+  fig.draw_mesh(mesh, false);
+  //fig.draw_halfedge(mesh, true);
+  //fig.draw_node(mesh, true);
 }
 
 int main()
 {
   //test_uniform_mesh();
-  test_cut_mesh();
+  //test_cut_mesh();
   //test_simple_mesh();
   //test_splite_halfedge();
   //test_bird_mesh();
+  test_cut_mesh_algorithm();
 }
