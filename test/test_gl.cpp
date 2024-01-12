@@ -5,6 +5,32 @@
 #include <fstream>
 #include <sstream>
 
+static uint32_t Init(uint32_t width = 800, uint32_t height = 600)
+{
+  glfwInit();
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3); /**< 告诉 GLFW GL 的主版本号 */
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3); /**< 告诉 GLFW GL 的次版本号 */
+  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+  /** 创建一个窗口，800 宽 600 高，名字叫 LeanOpenGL */
+  GLFWwindow* window = glfwCreateWindow(width, height, "LearnOpenGL", NULL, NULL);
+  if (window == NULL)
+  {
+    std::cout << "Failed to create GLFW window" << std::endl;
+    glfwTerminate();
+    return 0;
+  }
+  glfwMakeContextCurrent(window);
+
+  /** 告诉 GLAD OpenGL 的函数指针位置 */
+  if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+  {
+    std::cout << "Failed to initialize GLAD" << std::endl;
+    return 0;
+  }
+  return 1;
+}
+
 struct ShaderProgramSource
 {
   std::string vertex_shader_source;
@@ -92,31 +118,6 @@ void draw_a_triangle()
 
 int main(int , char ** argv)
 {
-  glfwInit();
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3); /**< 告诉 GLFW GL 的主版本号 */
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3); /**< 告诉 GLFW GL 的次版本号 */
-  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-  /** 创建一个窗口，800 宽 600 高，名字叫 LeanOpenGL */
-  GLFWwindow* window = glfwCreateWindow(800, 600, "LearnOpenGL", NULL, NULL);
-  if (window == NULL)
-  {
-    std::cout << "Failed to create GLFW window" << std::endl;
-    glfwTerminate();
-    return -1;
-  }
-  glfwMakeContextCurrent(window);
-
-  /** 告诉 GLAD OpenGL 的函数指针位置 */
-  if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-  {
-    std::cout << "Failed to initialize GLAD" << std::endl;
-    return -1;
-  }
-
-  ShaderProgramSource source = ParseShader(argv[1]);
-  uint32_t shader = CreateShader(source.vertex_shader_source, source.fragment_shader_source);
-  glUseProgram(shader);
 
   /** set up vertex data (and buffer(s)) and configure vertex attributes */
   float vertices[] = {
@@ -126,13 +127,18 @@ int main(int , char ** argv)
       -0.5f,  0.5f, 0.0f  // top   
   }; 
 
-  unsigned int VBO, VAO;
-  // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
-  glGenVertexArrays(1, &VAO);
-  glBindVertexArray(GL_ELEMENT_ARRAY_BUFFER, VAO);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, VAO)
+  uint32_t indices[] = 
+  {
+    0, 1, 2,
+    0, 2, 3
+  };
 
+  /** 定义顶点缓冲数组 */
+  unsigned int VBO, VAO;
+  glGenVertexArrays(1, &VAO);
   glGenBuffers(1, &VBO);
+
+  glBindVertexArray(VAO);
 
   glBindBuffer(GL_ARRAY_BUFFER, VBO);
   glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
@@ -140,6 +146,15 @@ int main(int , char ** argv)
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
   glEnableVertexAttribArray(0);
 
+  /** 定义单元缓冲数组 */
+  uint32_t EBO;
+  glGenBuffers(1, &EBO);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+
+
+  ShaderProgramSource source = ParseShader(argv[1]);
+  uint32_t shader = CreateShader(source.vertex_shader_source, source.fragment_shader_source);
+  glUseProgram(shader);
 
   /** 定义视图窗口 */
   glViewport(0, 0, 800, 600);
@@ -155,6 +170,7 @@ int main(int , char ** argv)
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
+    glBindVertexArray(VAO);
     glDrawArrays(GL_TRIANGLES, 0, 3);
 
     /** 绘制窗口 */
