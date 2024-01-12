@@ -20,6 +20,14 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 message("CMAKE_BUILD_TYPE : " ${CMAKE_BUILD_TYPE})
 
+# Eigen
+find_package (Eigen3 3.3 REQUIRED NO_MODULE)
+if(NOT ${Eigen3_FOUND})
+    message("Eigen3 not found")
+else()
+    message("Found Eigen3!")
+endif()
+
 # 查找 Cairo 库
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(CAIROMM REQUIRED cairomm-1.0)
