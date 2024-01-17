@@ -1,11 +1,18 @@
 #ifndef _FIGURE_
 #define _FIGURE_
 
+#include <algorithm>
 #include <cairomm/cairomm.h>
 #include <iostream>
+#include <functional>
 
 class Figure
 {
+public:
+  struct Color
+  {
+    double r,g,b;
+  }; 
 public:
   Figure(std::string name = "out", std::array<double, 4> param = {0, 0, 400, 400})
   {
@@ -21,11 +28,51 @@ public:
     cr_->translate(-x, -y);
   }
 
-  template<typename Mesh>
-  void draw_mesh(Mesh & m, bool showindex = false);
+  Color get_color(double v,double vmin,double vmax)
+  {
+    Color c = {1.0,1.0,1.0}; // white
+    double dv;
+
+    if (v < vmin)
+      v = vmin;
+    if (v > vmax)
+      v = vmax;
+    dv = vmax - vmin;
+
+    if (v<(vmin + 0.25*dv)) 
+    {
+      c.r = 0;
+      c.g = 4*(v - vmin)/dv;
+    } 
+    else if (v<(vmin + 0.5*dv)) 
+    {
+      c.r = 0;
+      c.b = 1 + 4*(vmin + 0.25*dv - v)/dv;
+    } 
+    else if (v<(vmin + 0.75*dv)) 
+    {
+      c.r = 4*(v - vmin - 0.5 * dv)/dv;
+      c.b = 0;
+    } 
+    else 
+    {
+      c.g = 1 + 4*(vmin + 0.75*dv - v)/dv;
+      c.b = 0;
+    }
+    return c;
+  }
 
   template<typename Mesh>
-  void draw_halfedge(Mesh & m, bool showindex = false);
+  void draw_mesh(Mesh & m, bool showindex = false)
+  {
+    draw_mesh<Mesh, double>(m, showindex);
+  }
+
+  template<typename Mesh, typename Data>
+  void draw_mesh(Mesh & m, bool showindex = false, std::string name="");
+
+  template<typename Mesh>
+    void draw_halfedge(Mesh & m, bool showindex = false);
 
   template<typename Mesh>
   void draw_node(Mesh & m, bool showindex = false);
@@ -63,17 +110,36 @@ void Figure::_show_label(double x, double y, std::string label, double ax,  doub
   cr_->show_text(label);
 }
 
-template<typename Mesh>
-void Figure::draw_mesh(Mesh & m, bool showindex)
+template<typename Mesh, typename Data>
+void Figure::draw_mesh(Mesh & m, bool showindex, std::string dname)
 {
   uint32_t n = 0;
   uint32_t NC = m.number_of_cells();
   auto & cell = *(m.get_cell());
   std::vector<double> ch(NC);
+  std::function<Color(typename Mesh::Cell &)> color_fun;
+  if(dname.size()<1)
+    color_fun = [](typename Mesh::Cell &)->Color { return Color{128.0/256.0, 230.0/256.0, 115.0/256.0};};
+  else
+  {
+    auto & data = *(m.template get_cell_data<Data>(dname));
+    double max = -1e10, min = 1e10;
+    for(auto d : data)
+    {
+      max = std::max(max, (double)d);
+      min = std::min(min, (double)d);
+    }
+    color_fun = [max, min, &data, this](typename Mesh::Cell & c)->Color
+    {
+      return this->get_color((double)data[c.index()], min, max);
+    };
+  }
+
   for(auto & c : cell)
   {
     auto * start = c.halfedge();
-    cr_->set_source_rgb(128.0/256.0, 230.0/256.0, 115.0/256.0);
+    Color color = color_fun(c);
+    cr_->set_source_rgb(color.r, color.g, color.b);
     cr_->move_to(start->node()->coordinate().x, start->node()->coordinate().y);
 
     for(auto * h = start->next(); h != start; h=h->next())
@@ -87,7 +153,6 @@ void Figure::draw_mesh(Mesh & m, bool showindex)
 
     cr_->set_source_rgb(0, 0, 0);
     cr_->stroke();  // Stroke to draw the edges
-
   }
   if(showindex)
   {

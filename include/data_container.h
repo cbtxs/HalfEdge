@@ -22,7 +22,7 @@ public:
   /**
    * @brief 构造函数
    */
-  DataContainer(unsigned int size=0): 
+  DataContainer(unsigned int size=0): data_number_(size), 
     is_free_(std::make_shared<MarkArray>(size)), 
     free_index_(), data_() 
   {

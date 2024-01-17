@@ -298,6 +298,9 @@ public:
     return *this;
   }
 
+  /** 返回一个内点 */
+  Point inner_point() const;
+
   Point barycenter() const
   {
     uint8_t n = 1;
@@ -410,7 +413,7 @@ inline uint32_t Cell::get_top()
   {
     cell2node[N] = h->node();
     cell2edge[N] = h->edge(); 
-    cell2cell[N++] = h->cell(); 
+    cell2cell[N++] = h->opposite()->cell(); 
   }
   return N;
 }
@@ -428,6 +431,23 @@ inline double Cell::area()
     a += v0.cross(v1);
   }
   return a/2;
+}
+
+/** 返回一个内点 */
+inline Point Cell::inner_point() const
+{
+  Point p(0, 0);
+  for(HalfEdge* h = start_->next(); h != start_; h = h->next())
+  {
+    if(h->tangential().cross(h->next()->tangential())>0)
+    {
+      p  = h->previous()->node()->coordinate();
+      p += h->node()->coordinate();
+      p += h->next()->node()->coordinate();
+      return p/3.0;
+    }
+  }
+  return p;
 }
 
 

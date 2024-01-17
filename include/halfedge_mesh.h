@@ -1,6 +1,12 @@
+/** 
+ * Author : Chunyu Chen 
+ * Date   : 2023-12-3
+ * Brief  : A base class for halfedge mesh data structure.
+ */
 #ifndef _HalfEdge_MESH_BASE_
 #define _HalfEdge_MESH_BASE_
 
+#include <functional>
 #include <map>
 #include <memory>
 
@@ -58,6 +64,55 @@ public:
 
   std::shared_ptr<Array<HalfEdge>> get_halfedge() { return halfedge_data_ptr_->get_entity(); }
 
+  template<typename Data>
+  std::shared_ptr<Array<Data>> get_node_data(std::string dname) 
+  { 
+    return node_data_ptr_->template get_data<Data>(dname); 
+  }
+
+  template<typename Data>
+  std::shared_ptr<Array<Data>> get_edge_data(std::string dname) 
+  { 
+    return edge_data_ptr_->template get_data<Data>(dname); 
+  }
+
+  template<typename Data>
+  std::shared_ptr<Array<Data>> get_cell_data(std::string dname) 
+  { 
+    return cell_data_ptr_->template get_data<Data>(dname); 
+  }
+
+  template<typename Data>
+  std::shared_ptr<Array<Data>> add_node_data(std::string dname) 
+  { 
+    return node_data_ptr_->template add_data<Data>(dname); 
+  }
+
+  template<typename Data>
+  std::shared_ptr<Array<Data>> add_edge_data(std::string dname) 
+  { 
+    return edge_data_ptr_->template add_data<Data>(dname); 
+  }
+
+  template<typename Data>
+  std::shared_ptr<Array<Data>> add_cell_data(std::string dname) 
+  { 
+    return cell_data_ptr_->template add_data<Data>(dname); 
+  }
+
+  template<typename Entity>
+  std::shared_ptr<Array<Entity>> get_entity() 
+  { 
+    if constexpr (std::is_same_v<Entity, Cell>)
+      return cell_data_ptr_->get_entity();
+    else if constexpr (std::is_same_v<Entity, Edge>)
+      return edge_data_ptr_->get_entity();
+    else if constexpr (std::is_same_v<Entity, Node>)
+      return node_data_ptr_->get_entity();
+    else if constexpr (std::is_same_v<Entity, HalfEdge>)
+      return halfedge_data_ptr_->get_entity();
+  }
+
   /** 删除实体 */
   void delete_node(Node & n) { node_data_ptr_->delete_index(n.index());}
 
@@ -85,6 +140,14 @@ public:
 
   std::shared_ptr<Array<uint32_t>> get_halfedge_indices() { return halfedge_data_ptr_->get_entity_indices(); }
 
+  /** @brief 实体迭代函数 */
+  template<typename Entity>
+  void for_each_entity(const std::function<bool(Entity & )> & );
+
+  /** @brief 并行的实体迭代函数 */
+  template<typename Entity>
+  void parallel_for_each_entity(const std::function<bool(Entity & )> & );
+
   /** 实体个数 */
   uint32_t number_of_nodes() { return node_data_ptr_->number_of_data(); }
 
@@ -101,6 +164,9 @@ public:
     return NE*2-NHE;
   }
 
+  /**
+   * @brief 获取一个 Box 将整个网格框起来
+   */
   std::array<double, 4> get_box()
   {
     std::array<double, 4> box = {-1e-100};
@@ -188,7 +254,9 @@ public:
     halfedge_data_ptr_->clear();
   }
 
-  /** @brief 清空网格并释放内存 */
+  /** 
+   * @brief 清空网格并释放内存 
+   */
   void release()
   {
     node_data_ptr_->release();
@@ -207,6 +275,7 @@ public:
 
   void update()
   {
+    std::cout << "NNNN : " << std::endl;
     node_data_ptr_->update();
     edge_data_ptr_->update();
     cell_data_ptr_->update();
@@ -293,7 +362,13 @@ void HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge>::reinit(double * node, uint32_
       c2h[j] = &add_halfedge();
     for(uint32_t j = 0; j < NV; j++)
     {
-      c2h[j]->reset(c2h[nextidx[j]], c2h[previdx[j]], c2h[j], &c, nullptr, &node_[cell[i*NV+j]], c2h[j]->index());
+      c2h[j]->reset(c2h[nextidx[j]], 
+                    c2h[previdx[j]], 
+                    c2h[j], 
+                    &c, 
+                    nullptr, 
+                    &node_[cell[i*NV+j]], 
+                    c2h[j]->index());
       n2n[cell[i*NV+previdx[j]]].emplace(std::pair<uint32_t, HalfEdge * >(cell[i*NV+j], c2h[j]));
       node_[cell[i*NV+j]].set_halfedge(c2h[j]);
     }
@@ -335,7 +410,8 @@ void HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge>::reinit(double * node, uint32_
 }
 
 template<typename Node, typename Edge, typename Cell, typename HalfEdge>
-HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge> & HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge>::operator = (const Self & other)
+HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge> & 
+HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge>::operator = (const Self & other)
 {
   if(this != &other)
   {
@@ -343,6 +419,35 @@ HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge> & HalfEdgeMeshBase<Node, Edge, Cell
     swap(m);
   }
   return *this;
+}
+
+/**
+ * @brief 节点迭代函数
+ */
+template<typename Node, typename Edge, typename Cell, typename HalfEdge>
+template<typename Entity>
+void HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge>::
+for_each_entity(const std::function<bool(Entity & )> & f)
+{
+  auto & entitys = *(get_entity<Entity>());
+  for(auto & e : entitys)
+  {
+    f(e);
+  }
+}
+
+/**
+ * @brief 节点迭代函数
+ */
+template<typename Node, typename Edge, typename Cell, typename HalfEdge>
+template<typename Entity>
+void HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge>::
+parallel_for_each_entity(const std::function<bool(Entity & )> & f)
+{
+  auto & entitys = *get_entity<Entity>();
+  #pragma omp parallel for
+  for(auto & e : entitys)
+    f(e);
 }
 
 

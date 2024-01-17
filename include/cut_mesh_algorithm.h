@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <memory>
 #include <iostream>
+#include <stack>
 
 #include "geometry.h"
 
@@ -24,16 +25,21 @@ public:
   using Edge = typename Mesh::Edge;
   using Node = typename Mesh::Node;
   using HalfEdge = typename Mesh::HalfEdge; 
+  template<typename Data>
+  using Array = typename Base::template Array<Data>;
+
+  std::shared_ptr<Array<uint8_t>> i3f;
 
 public:
   template<typename... Args>
   CutMesh(Args&&... args) : Base(std::forward<Args>(args)...) 
   {
-    update();
+    update_cidx();
     eps_ = Base::cell_size()*1e-5;
+    i3f = this->template add_cell_data<uint8_t>("is_in_the_interface");
   }
 
-  void update()
+  void update_cidx()
   {
     cidx_.resize(Base::number_of_cells());
     auto & cell = *Base::get_cell();
@@ -76,7 +82,7 @@ public:
    * @brief 判断 
    *   "通过连接 h0 和 h1 指向的顶点来加密单元会不会产生面积非常小的单元"
    */
-  bool is_can_be_splite(HalfEdge * h0, HalfEdge * h1);
+  uint8_t is_can_be_splite(HalfEdge * h0, HalfEdge * h1);
 
   /**
    * @brief 计算两个线段 [p0, p1], [q0, q1] 的交点，交点为 (1-t)*p0 + t*p1。
@@ -159,7 +165,7 @@ uint8_t CutMesh<BaseMesh>::is_on_the_polygon(Point & p, Cell * c, HalfEdge* & rh
  *   "通过连接 h0 和 h1 指向的顶点来加密单元会不会产生面积非常小的单元"
  */
 template<typename BaseMesh>
-bool CutMesh<BaseMesh>::is_can_be_splite(HalfEdge * h0, HalfEdge * h1)
+uint8_t CutMesh<BaseMesh>::is_can_be_splite(HalfEdge * h0, HalfEdge * h1)
 {
   Cell * c = h0->cell();
   double ca = c->area();
@@ -174,7 +180,12 @@ bool CutMesh<BaseMesh>::is_can_be_splite(HalfEdge * h0, HalfEdge * h1)
     nca += v1.cross(v0);
   }
   nca*=0.5;
-  return (ca-nca)>eps_*eps_ && nca > eps_*eps_;
+  if((ca-nca)<eps_*eps_)
+    return 0;
+  else if(nca < eps_*eps_)
+    return 1;
+  else
+    return 2;
 }
 
 /**
@@ -491,8 +502,32 @@ void CutMeshAlgorithm<BaseMesh>::_out_cell_1(
      * 2. 但是 can_be_splite 为 true 时可无视上一种情况。
      */
     p = h1->node()->coordinate();
-    if((h0 && mesh_->is_can_be_splite(h0, h1)) || can_be_splite)
+    if(can_be_splite)
+    {
       mesh_->splite_cell(c0, h0, h1);
+      (*(mesh_->i3f))[h0->cell()->index()] = 1;
+      (*(mesh_->i3f))[h1->cell()->index()] = 2;
+    }
+    else if(h0)
+    {
+      uint8_t flag = mesh_->is_can_be_splite(h0, h1);
+      if(flag==2)
+      {
+        mesh_->splite_cell(c0, h0, h1);
+        (*(mesh_->i3f))[h0->cell()->index()] = 1;
+        (*(mesh_->i3f))[h1->cell()->index()] = 2;
+      }
+      else if(flag==1)
+      {
+        (*(mesh_->i3f))[h0->cell()->index()] = 1;
+        (*(mesh_->i3f))[h1->opposite()->cell()->index()] = 2;
+      }
+      else if(flag==0)
+      {
+        (*(mesh_->i3f))[h0->opposite()->cell()->index()] = 1;
+        (*(mesh_->i3f))[h1->cell()->index()] = 2;
+      }
+    }
     h0 = mesh_->find_cell_by_vector_on_node(h1->node(), v);
   }
   else /**< 没有交到顶点上 */
@@ -500,7 +535,11 @@ void CutMeshAlgorithm<BaseMesh>::_out_cell_1(
     mesh_->splite_halfedge(h1, p);
     h1 = h1->previous();
     if(h0)
+    {
       mesh_->splite_cell(c0, h0, h1);
+      (*(mesh_->i3f))[h0->cell()->index()] = 1;
+      (*(mesh_->i3f))[h1->cell()->index()] = 2;
+    }
     h0 = h1->opposite()->previous();
   }
 }
@@ -550,12 +589,12 @@ uint32_t CutMeshAlgorithm<BaseMesh>::_find_first_point_in_loop_interface(
       {
         c0 = c; 
         p0 = p;
-        segments.push_back(i);
+        segments.push_back(segments[i]);
       }
       else if(c==c0)
       {
         p0 = p;
-        segments.push_back(i);
+        segments.push_back(segments[i]);
       }
       else
       {
@@ -582,7 +621,7 @@ uint32_t CutMeshAlgorithm<BaseMesh>::_find_first_point_in_loop_interface(
 
         p0 = points[segments[i+1]];
         h0 = mesh_->find_cell_by_vector_on_node(h->node(), p0-p);
-        segments.push_back(i);
+        segments.push_back(segments[i]);
         return i+1;
       }
       else
@@ -602,6 +641,12 @@ template<typename BaseMesh>
 void CutMeshAlgorithm<BaseMesh>::cut_by_loop_interface(Interface & interface)
 {
   std::cout << "cuting..." << std::endl;
+
+  /** 设置单元状态为在界面外部 */
+  auto & is_in_the_interface = *(mesh_->i3f);
+  for(auto & t : is_in_the_interface)
+    t = 0;
+
   auto & points = interface.points;
   auto & segments = interface.segments;
   auto & is_fixed_points = interface.is_fixed_points;
@@ -682,8 +727,33 @@ void CutMeshAlgorithm<BaseMesh>::cut_by_loop_interface(Interface & interface)
         mesh_->splite_halfedge(hp1, p1);
         hp1 = hp1->previous();
       }
-      if((mesh_->is_can_be_splite(h0, hp1) && h0 != hp1) || !fpc.empty())
-        mesh_->splite_cell(c0, h0, hp1); 
+
+      if(!fpc.empty())
+      {
+        mesh_->splite_cell(c0, h0, hp1);
+        (*(mesh_->i3f))[h0->cell()->index()] = 1;
+        (*(mesh_->i3f))[hp1->cell()->index()] = 2;
+      }
+      else if(h0 != hp1)
+      {
+        uint8_t flag = mesh_->is_can_be_splite(h0, hp1);
+        if(flag==2)
+        {
+          mesh_->splite_cell(c0, h0, hp1);
+          (*(mesh_->i3f))[h0->cell()->index()] = 1;
+          (*(mesh_->i3f))[hp1->cell()->index()] = 2;
+        }
+        else if(flag==1)
+        {
+          (*(mesh_->i3f))[h0->cell()->index()] = 2;
+          (*(mesh_->i3f))[hp1->opposite()->cell()->index()] = 1;
+        }
+        else if(flag==0)
+        {
+          (*(mesh_->i3f))[h0->opposite()->cell()->index()] = 1;
+          (*(mesh_->i3f))[hp1->cell()->index()] = 2;
+        }
+      }
       for(auto & p : fpc)
         mesh_->splite_halfedge(hp1->next(), p);
 
@@ -696,6 +766,32 @@ void CutMeshAlgorithm<BaseMesh>::cut_by_loop_interface(Interface & interface)
     }
     c0 = h0->cell(); p0 = p1; fpc = fpn; fpn.clear();
   }
+  /** 处理内部单元标记 */
+  std::stack<typename Mesh::Cell*> inner_cell;
+  auto & cell = *(mesh_->get_cell());
+  for(auto & c : cell)
+  {
+    if(is_in_the_interface[c.index()]==1)
+      inner_cell.push(&c);
+  }
+  while(!inner_cell.empty())
+  {
+    typename Mesh::Cell * c = inner_cell.top();
+    inner_cell.pop();
+    uint32_t N = c->get_top();
+    for(uint8_t i = 0; i < N; i++)
+    {
+      typename Mesh::Cell * ci = c->cell2cell[i];
+      if(is_in_the_interface[ci->index()]==0)
+      {
+        inner_cell.push(ci);
+        is_in_the_interface[ci->index()]=1;
+      }
+    }
+  }
+  for(auto & c : cell)
+    is_in_the_interface[c.index()] = is_in_the_interface[c.index()]==1;
+
 }
 
 template<typename BaseMesh>

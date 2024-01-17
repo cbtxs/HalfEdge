@@ -243,8 +243,9 @@ void test_bird_mesh()
 
   auto & mesh = *(meshptr.get());
   check_mesh(mesh);
-  Figure fig("out", mesh.get_box());
-  fig.draw_mesh(mesh, true);
+  Figure fig("bird", mesh.get_box());
+  //fig.draw_mesh(mesh, true);
+  fig.draw_mesh<Mesh, uint8_t>(mesh, false, "is_in_the_interface");
 }
 
 void test_cut_mesh_algorithm()
@@ -255,7 +256,7 @@ void test_cut_mesh_algorithm()
 
   clock_t t0, t1, t2;
   double a = 0, b = 0, c = 1, d = 0.8;
-  uint32_t nx = 31, ny = 26;
+  uint32_t nx = 200, ny = 160;
   double hx = (c-a)/nx, hy = (d-b)/ny;
 
   t0 = clock();
@@ -266,8 +267,8 @@ void test_cut_mesh_algorithm()
   //std::vector<double> n = {0.25, 0.2, 0.22, 0.4, 0.3, 0.27, 0.37, 0.12};
   //std::vector<uint32_t> idx0 = {0, 1, 2, 3, 0};
   //std::vector<double> n = {0.451, 0.21, 0.452, 0.43, 0.7512, 0.4234, 0.75123, 0.21234};
-  std::vector<double> n = {0.25, 0.25, 0.25, 0.65, 0.75, 0.65, 0.75, 0.25};
-  std::vector<uint32_t> segments = {0, 1, 2, 3, 0};
+  std::vector<double> n = {0.25, 0.23, 0.25, 0.65, 0.75, 0.65, 0.75, 0.23};
+  std::vector<uint32_t> segments = {3, 2, 1, 0, 3};
   std::vector<bool> fix = {true, true, true, true};
 
   Interface iface;
@@ -276,10 +277,8 @@ void test_cut_mesh_algorithm()
     points.push_back(Point(n[i], n[i+1]));
   iface.segments = segments;
   iface.is_fixed_points = fix;
-
   std::vector<Interface> ifaces;
   ifaces.emplace_back(iface);
-
   cut.cut_by_interfaces(ifaces);
 
   points.clear();
@@ -289,10 +288,10 @@ void test_cut_mesh_algorithm()
     p.y -= 0.024;
   iface.segments = segments;
   iface.is_fixed_points = fix;
-
   ifaces.clear();
   ifaces.emplace_back(iface);
   cut.cut_by_interfaces(ifaces);
+
   t2 = clock();
   std::cout << (double)(t1-t0)/CLOCKS_PER_SEC << std::endl;
   std::cout << (double)(t2-t1)/CLOCKS_PER_SEC << std::endl;
@@ -301,7 +300,8 @@ void test_cut_mesh_algorithm()
   check_mesh(mesh);
   //print(mesh);
   Figure fig("out", mesh.get_box());
-  fig.draw_mesh(mesh, false);
+  fig.draw_mesh<Mesh, uint8_t>(mesh, false, "is_in_the_interface");
+  //fig.draw_mesh(mesh, false);
   //fig.draw_halfedge(mesh, true);
   //fig.draw_node(mesh, true);
 }
@@ -312,6 +312,6 @@ int main()
   //test_cut_mesh();
   //test_simple_mesh();
   //test_splite_halfedge();
-  //test_bird_mesh();
+  test_bird_mesh();
   test_cut_mesh_algorithm();
 }
