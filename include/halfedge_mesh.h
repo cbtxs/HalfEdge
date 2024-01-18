@@ -275,7 +275,6 @@ public:
 
   void update()
   {
-    std::cout << "NNNN : " << std::endl;
     node_data_ptr_->update();
     edge_data_ptr_->update();
     cell_data_ptr_->update();
