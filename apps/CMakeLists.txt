@@ -9,4 +9,5 @@ set_target_properties(cutmesh PROPERTIES LINK_FLAGS "-static-libgcc -static-libs
 set_target_properties(cutmesh PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 
-add_executable(cut_mesh cut_mesh.cpp)
+add_executable(cut_mesh cut_mesh.cpp )
+target_link_libraries(cut_mesh ${CAIROMM_LIBRARIES})

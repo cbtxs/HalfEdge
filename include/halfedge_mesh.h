@@ -297,15 +297,16 @@ HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge>::HalfEdgeMeshBase(
     const HalfEdgeMeshBase & mesh): HalfEdgeMeshBase() 
 {
   //clear();
-  *node_data_ptr_ = *mesh.node_data_ptr_;
-  *edge_data_ptr_ = *mesh.edge_data_ptr_;
-  *cell_data_ptr_ = *mesh.cell_data_ptr_;
+  *node_data_ptr_     = *mesh.node_data_ptr_;
+  *edge_data_ptr_     = *mesh.edge_data_ptr_;
+  *cell_data_ptr_     = *mesh.cell_data_ptr_;
   *halfedge_data_ptr_ = *mesh.halfedge_data_ptr_;
 
   auto & node_ = *get_node(); 
   auto & edge_ = *get_edge(); 
   auto & cell_ = *get_cell(); 
   auto & halfedge_ = *get_halfedge();
+
   for(auto it = node_.begin(); it != node_.end(); ++it)
     it->set_halfedge(&(halfedge_[it->halfedge()->index()]));
 

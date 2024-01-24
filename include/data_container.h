@@ -228,6 +228,13 @@ public:
     indices_ = Base::template add_data<uint32_t>("indices");
   }
 
+  Self & operator = (Self & other)
+  {
+    Base::operator = (other);
+    update();
+    return *this;
+  }
+
 private:
   std::shared_ptr<DataArray<Entity> > entity_;
   std::shared_ptr<DataArray<uint32_t> > indices_;

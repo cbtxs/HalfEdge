@@ -35,31 +35,47 @@ public:
   CutMesh(Args&&... args) : Base(std::forward<Args>(args)...) 
   {
     update_cidx();
-    eps_ = Base::cell_size()*1e-5;
+    eps_ = Base::cell_size()*1e-3;
     i3f = this->template add_cell_data<uint8_t>("is_in_the_interface");
   }
 
   void update_cidx()
   {
-    cidx_.resize(Base::number_of_cells());
+    uint32_t NC = Base::number_of_cells();
+    subcell_.resize(Base::number_of_cells());
+
+    std::fill(cidx_.begin(), cidx_.end(), 0.0);
+    cidx_.resize(Base::number_of_cells(), 0);
     auto & cell = *Base::get_cell();
     for(auto & c : cell)
     {
       uint32_t idx = Base::find_point(c.barycenter());
-      cidx_[idx] = &c;
+      cidx_[idx+1]++;
+    }
+
+    for(uint32_t i = 1; i < NC; i++)
+      cidx_[i] += cidx_[i-1];
+
+    std::vector<uint32_t> I(NC, 0);
+    for(auto & c : cell)
+    {
+      uint32_t idx = Base::find_point(c.barycenter());
+      subcell_[cidx_[idx]+I[idx]] = &c;
+      I[idx]++;
     }
   }
 
-  Cell * find_point(Point & p)
+  Cell * find_point(Point & p, bool maybe_on_the_edge = true)
   {
     HalfEdge * h = nullptr;
-    Cell * c = cidx_[Base::find_point(p)];
-    while(true)
+    uint32_t idx = Base::find_point(p);
+    Cell * c = nullptr;
+    for(uint32_t i = cidx_[idx]; i < cidx_[idx+1]; i++)
     {
-      bool flag = is_on_the_polygon(p, c, h);
+      c = subcell_[i]; 
+      bool flag = is_on_the_polygon(p, c, h, maybe_on_the_edge);
       if(flag==1)
         break;
-      c = h->opposite()->cell();
     }
     return c;
   }
@@ -68,7 +84,7 @@ public:
    * @brief 使用射线法判断点 p 是否在多边形 c 中, 如果没有，就返回一个半边 rh,
    *   rh 是距离 p 最近的半边。
    */
-  uint8_t is_on_the_polygon(Point & p, Cell * c, HalfEdge* & rh);
+  uint8_t is_on_the_polygon(Point & p, Cell * c, HalfEdge* & rh, bool maybe_on_the_edge);
 
   /**
    * @brief 判断 p0, p1 是不是同一个点 
@@ -125,7 +141,8 @@ public:
 
 
 private:
-  std::vector<Cell * > cidx_;
+  std::vector<Cell * > subcell_;
+  std::vector<uint32_t> cidx_;
   double eps_;
 };
 
@@ -134,20 +151,20 @@ private:
  *   rh 是距离 p 最近的半边。
  */
 template<typename BaseMesh>
-uint8_t CutMesh<BaseMesh>::is_on_the_polygon(Point & p, Cell * c, HalfEdge* & rh)
+uint8_t CutMesh<BaseMesh>::is_on_the_polygon(Point & p, Cell * c, HalfEdge* & rh, bool maybe_on_the_edge)
 {
   uint8_t flag = 0;
   double d = 1e10;
   for(HalfEdge * h = c->halfedge(); h != c->halfedge() || d>1e9; h = h->next())
   {
-    if(is_on_the_halfedge(p, h))
+    if(maybe_on_the_edge && is_on_the_halfedge(p, h))
       return 1;
     Point p1 = h->node()->coordinate();
     Point p0 = h->previous()->node()->coordinate();
     if((p.x>p0.x) != (p.x>p1.x))
     {
       double ft = (p0.x-p.x)/(p0.x-p1.x);
-      if(p.y < p1.y+ft*(p0.y-p1.y))
+      if(p.y < p0.y-ft*(p0.y-p1.y))
         flag += 1; 
     }
     double l2 = (p0*0.5+p1*0.5-p).dot(p0*0.5+p1*0.5-p);
@@ -201,7 +218,7 @@ bool CutMesh<BaseMesh>::intersection_point_of_two_segments(
   Vector v2 = q0-p0;
   double l = v0.length();
   double v = v0.cross(v1);
-  if(std::abs(v/l) < eps_/10)
+  if(std::abs(v/l) < eps_)
   {
     return false;
   }
@@ -269,7 +286,7 @@ uint8_t CutMesh<BaseMesh>::is_on_the_halfedge(Point & p, HalfEdge * h)
   const auto & p1 = h->node()->coordinate();
   double l = v.length();
   double t = ((p-p0).dot(v))/(l*l);
-  if(is_same_point(p, p0+v*t) && t*l>-eps_ && (1-t)*l > -eps_)
+  if(is_same_point(p, p0+v*t) && t*l>-eps_/10.0 && (1-t)*l > -eps_/10.0)
   {
     p = p0+v*t;
     if(is_same_point(p, p0))
@@ -361,6 +378,9 @@ public:
   using Node = typename BaseMesh::Node;
   using HalfEdge = typename BaseMesh::HalfEdge; 
 
+  template<typename Data>
+  using Array = typename BaseMesh::template Array<Data>;
+
   /**
    * @brief 表示一个二维界面
    */
@@ -440,11 +460,17 @@ private:
   HalfEdge * _cut_by_segment(const Point & p0, const Point & p1, HalfEdge * h0, 
       const std::vector<Cell *> & c1s);
 
+  /**
+   * @brief 获取内部单元
+   */
+  void get_inner_cell(Array<uint8_t> & is_in_the_interface);
+
   /** 
    * @brief 找到循环界面的第一个点，这个点是一个边上的点或与网格节点重合的点，
    *   如果没有就加一个。
    */
   uint32_t _find_first_point_in_loop_interface(Interface & interface, HalfEdge* & h0);
+
 
 private:
   std::shared_ptr<Mesh> mesh_;
@@ -638,6 +664,36 @@ uint32_t CutMeshAlgorithm<BaseMesh>::_find_first_point_in_loop_interface(
 }
 
 template<typename BaseMesh>
+void CutMeshAlgorithm<BaseMesh>::get_inner_cell(Array<uint8_t> & is_in_the_interface)
+{
+  /** 处理内部单元标记 */
+  std::stack<typename Mesh::Cell*> inner_cell;
+  auto & cell = *(mesh_->get_cell());
+  for(auto & c : cell)
+  {
+    if(is_in_the_interface[c.index()]==1)
+      inner_cell.push(&c);
+  }
+  while(!inner_cell.empty())
+  {
+    typename Mesh::Cell * c = inner_cell.top();
+    inner_cell.pop();
+    uint32_t N = c->get_top();
+    for(uint8_t i = 0; i < N; i++)
+    {
+      typename Mesh::Cell * ci = c->cell2cell[i];
+      if(is_in_the_interface[ci->index()]==0)
+      {
+        inner_cell.push(ci);
+        is_in_the_interface[ci->index()]=1;
+      }
+    }
+  }
+  for(auto & c : cell)
+    is_in_the_interface[c.index()] = is_in_the_interface[c.index()]==1;
+}
+
+template<typename BaseMesh>
 void CutMeshAlgorithm<BaseMesh>::cut_by_loop_interface(Interface & interface)
 {
   std::cout << "cuting..." << std::endl;
@@ -766,32 +822,8 @@ void CutMeshAlgorithm<BaseMesh>::cut_by_loop_interface(Interface & interface)
     }
     c0 = h0->cell(); p0 = p1; fpc = fpn; fpn.clear();
   }
-  /** 处理内部单元标记 */
-  std::stack<typename Mesh::Cell*> inner_cell;
-  auto & cell = *(mesh_->get_cell());
-  for(auto & c : cell)
-  {
-    if(is_in_the_interface[c.index()]==1)
-      inner_cell.push(&c);
-  }
-  while(!inner_cell.empty())
-  {
-    typename Mesh::Cell * c = inner_cell.top();
-    inner_cell.pop();
-    uint32_t N = c->get_top();
-    for(uint8_t i = 0; i < N; i++)
-    {
-      typename Mesh::Cell * ci = c->cell2cell[i];
-      if(is_in_the_interface[ci->index()]==0)
-      {
-        inner_cell.push(ci);
-        is_in_the_interface[ci->index()]=1;
-      }
-    }
-  }
-  for(auto & c : cell)
-    is_in_the_interface[c.index()] = is_in_the_interface[c.index()]==1;
-
+  get_inner_cell(is_in_the_interface);
+  mesh_->update_cidx();
 }
 
 template<typename BaseMesh>
