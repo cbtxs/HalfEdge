@@ -18,8 +18,13 @@ void processInput(GLFWwindow *window)
         glfwSetWindowShouldClose(window, true);
 }
 
-void draw_a_triangle()
+void draw_a_triangle(Shader & shader)
 {
+  float timeValue = glfwGetTime();
+  float greenValue = (std::sin(timeValue) / 2.0f) + 0.5f;
+  int vertexColorLocation = glGetUniformLocation(shader.ID, "ourColor");
+  glUniform4f(vertexColorLocation, 0.0f, greenValue, 0.0f, 1.0f);
+  glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
 }
 
 int main(int , char ** argv)
@@ -86,15 +91,12 @@ int main(int , char ** argv)
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
+    shader.use();
+
     glBindVertexArray(VAO);
     //glDrawArrays(GL_TRIANGLES, 0, 3);
-
-    float timeValue = glfwGetTime();
-    float greenValue = (std::sin(timeValue) / 2.0f) + 0.5f;
-    int vertexColorLocation = glGetUniformLocation(shader.ID, "ourColor");
-    glUniform4f(vertexColorLocation, 0.0f, greenValue, 0.0f, 1.0f);
-
-    glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
+    
+    draw_a_triangle(shader);
 
     /** 绘制窗口 */
     glfwSwapBuffers(window);
