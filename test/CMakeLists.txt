@@ -4,6 +4,10 @@ add_executable(test_pmr test_pmr.cpp)
 add_executable(test_chunkarray test_chunkarray.cpp)
 add_executable(test_data_container test_data_container.cpp)
 
+add_executable(test_eigen test_eigen.cpp)
+target_link_libraries(test_eigen  OpenMP::OpenMP_CXX Eigen3::Eigen)
+#target_link_libraries(test_eigen  Eigen3::Eigen)
+
 add_executable(test_plot test_plot.cpp)
 target_link_libraries(test_plot ${CAIROMM_LIBRARIES})
 target_link_libraries(test_halfedgemesh ${CAIROMM_LIBRARIES})
