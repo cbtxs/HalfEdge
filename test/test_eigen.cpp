@@ -1,3 +1,5 @@
+#define EIGEN_USE_BLAS
+#define EIGEN_USE_LAPACKE
 #include <iostream>
 #include <fstream>
 #include <vector>
