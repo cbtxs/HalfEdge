@@ -192,6 +192,7 @@ void get_cut_mesh2(MeshParameter mp,
   cut0.cut_by_loop_interface(iface0);
   std::shared_ptr<Mesh> meshptr0 = std::make_shared<Mesh>(*meshptr2); 
 
+  Interface iface2 = iface1;
   cut0.cut_by_loop_interface(iface1); 
 
   //auto & mesh = *meshptr2;
@@ -200,7 +201,7 @@ void get_cut_mesh2(MeshParameter mp,
   //fig.draw_halfedge(mesh, true);
   //fig.draw_node(mesh, true);
 
-  cut1.cut_by_loop_interface(iface1);
+  cut1.cut_by_loop_interface(iface2);
 
   meshptr0->update();
   meshptr1->update();
@@ -238,14 +239,20 @@ void get_cut_mesh2(MeshParameter mp,
 
 }
 
-/**
 int main()
 {
-  MeshParameter mp{0.0, 0.0, 1.0, 1.0, 4, 4};
-  double point0[8] = {0.22131245, 0.21252151, 0.213515125, 0.6566125,  
-        0.712341251235, 0.65, 0.713515125, 0.23};
-  double point1[8] = {0.22131245, 0.21252151, 0.213515125, 0.6566125,  
-        0.712341251235, 0.65, 0.713515125, 0.23};
+  MeshParameter mp{0.0, 0.0, 1.0, 1.0, 10, 10};
+  double a = 0.421315;
+  double b = 0.66124;
+  double c = 0.7130124;
+  double d = 0.9230124;
+
+  //double point0[8] = {0.22131245, 0.21252151, 0.213515125, 0.6566125,  
+  //      0.712341251235, 0.65, 0.713515125, 0.23};
+  //double point1[8] = {0.22131245, 0.21252151, 0.213515125, 0.6566125,  
+  //      0.712341251235, 0.65, 0.713515125, 0.23};
+  double point0[8] = {a, c, a, d, b, d, b, c};
+  double point1[8] = {a, c, a, d, b, d, b, c};
   for(uint32_t i = 1; i < 8; i+=2)
     point1[i] -= 0.03;
 
@@ -269,8 +276,8 @@ int main()
   get_cut_mesh2(mp, i0, i1, out);
   for(int i = 0; i < NN[5]; i++)
     std::cout << i << " " << idx0[i] << " " << idx1[i] << std::endl;
+
 }
-*/
 
 
 #endif /* CUT_MESH_APP */ 

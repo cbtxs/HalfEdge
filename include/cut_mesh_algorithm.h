@@ -7,6 +7,7 @@
 #include <memory>
 #include <iostream>
 #include <stack>
+#include <string>
 
 #include "geometry.h"
 
