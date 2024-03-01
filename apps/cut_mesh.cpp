@@ -244,8 +244,8 @@ int main()
   MeshParameter mp{0.0, 0.0, 1.0, 1.0, 10, 10};
   double a = 0.421315;
   double b = 0.66124;
-  double c = 0.7130124;
-  double d = 0.9230124;
+  double c = 0.71121301;
+  double d = 0.84413012;
 
   //double point0[8] = {0.22131245, 0.21252151, 0.213515125, 0.6566125,  
   //      0.712341251235, 0.65, 0.713515125, 0.23};
@@ -254,7 +254,7 @@ int main()
   double point0[8] = {a, c, a, d, b, d, b, c};
   double point1[8] = {a, c, a, d, b, d, b, c};
   for(uint32_t i = 1; i < 8; i+=2)
-    point1[i] -= 0.03;
+    point1[i] -= 0.002;
 
   bool is_fixed_point[4] = {1, 1, 1, 1};
   int segment[5] = {3, 2, 1, 0, 3};
