@@ -195,11 +195,23 @@ void get_cut_mesh2(MeshParameter mp,
   Interface iface2 = iface1;
   cut0.cut_by_loop_interface(iface1); 
 
-  //auto & mesh = *meshptr2;
-  //Figure fig("out", mesh.get_box());
-  //fig.draw_mesh(mesh, true);
-  //fig.draw_halfedge(mesh, true);
-  //fig.draw_node(mesh, true);
+  //auto & mesh0 = *meshptr0;
+  //Figure fig0("out0", mesh0.get_box());
+  //fig0.draw_mesh(mesh0, true);
+  //fig0.draw_halfedge(mesh0, true);
+  //fig0.draw_node(mesh0, true);
+
+  //auto & mesh1 = *meshptr1;
+  //Figure fig1("out1", mesh1.get_box());
+  //fig1.draw_mesh(mesh1, true);
+  //fig1.draw_halfedge(mesh1, true);
+  //fig1.draw_node(mesh1, true);
+
+  //auto & mesh2 = *meshptr2;
+  //Figure fig2("out2", mesh2.get_box());
+  //fig2.draw_mesh(mesh2, true);
+  //fig2.draw_halfedge(mesh2, true);
+  //fig2.draw_node(mesh2, true);
 
   cut1.cut_by_loop_interface(iface2);
 
@@ -241,11 +253,11 @@ void get_cut_mesh2(MeshParameter mp,
 
 int main()
 {
-  MeshParameter mp{0.0, 0.0, 1.0, 1.0, 10, 10};
-  double a = 0.421315;
-  double b = 0.66124;
-  double c = 0.71121301;
-  double d = 0.84413012;
+  MeshParameter mp{-0.0, -0.0, 1.0, 1.0, 10, 10};
+  double a = 0.4;
+  double b = 0.6;
+  double c = 0.7;
+  double d = 0.9;
 
   //double point0[8] = {0.22131245, 0.21252151, 0.213515125, 0.6566125,  
   //      0.712341251235, 0.65, 0.713515125, 0.23};

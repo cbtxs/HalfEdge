@@ -79,7 +79,7 @@ UniformMesh::UniformMesh(double orign_x,
     for(uint32_t j = 0; j < ny+1; j++)
     {
       Node & n = add_node();
-      n.reset(Point(i*hx, j*hy), N++, nullptr);
+      n.reset(Point(i*hx+orign_x, j*hy+orign_y), N++, nullptr);
     }
   }
 

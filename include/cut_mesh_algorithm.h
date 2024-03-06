@@ -43,10 +43,10 @@ public:
   void update_cidx()
   {
     uint32_t NC = Base::number_of_cells();
-    subcell_.resize(Base::number_of_cells());
+    subcell_.resize(NC);
 
     std::fill(cidx_.begin(), cidx_.end(), 0.0);
-    cidx_.resize(Base::number_of_cells(), 0);
+    cidx_.resize(NC+1, 0);
     auto & cell = *Base::get_cell();
     for(auto & c : cell)
     {
@@ -54,7 +54,7 @@ public:
       cidx_[idx+1]++;
     }
 
-    for(uint32_t i = 1; i < NC; i++)
+    for(uint32_t i = 1; i < NC+1; i++)
       cidx_[i] += cidx_[i-1];
 
     std::vector<uint32_t> I(NC, 0);
