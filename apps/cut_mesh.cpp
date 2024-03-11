@@ -1,7 +1,7 @@
 #ifndef CUT_MESH_APP
 #define CUT_MESH_APP
 
-#include "figure.h"
+//#include "figure.h"
 #include "geometry.h"
 #include "entity.h"
 #include "uniform_mesh.h"
@@ -114,7 +114,6 @@ struct OutParameter
 
   int * idx0; /** 密网格单元在 0 号界面生成的网格单元中的编号 */
   int * idx1; /** 密网格单元在 1 号界面生成的网格单元中的编号 */
-  int * is_inner_cell; /** 1 号网格中的单元是不是内部单元 */
 
   int * N; /** NN1, NHE1, NC1, NN2, NHE2, NC2 */
 };
@@ -252,7 +251,6 @@ void get_cut_mesh2(MeshParameter mp,
 
 }
 
-/*
 int test(int NNN, int test_time = 10000)
 {
   for (int i = 0; i < test_time; i++) 
@@ -559,7 +557,6 @@ int main(int, char ** argv)
   test111(argv);
   return 0;
 }
-*/
 
 
 #endif /* CUT_MESH_APP */ 
