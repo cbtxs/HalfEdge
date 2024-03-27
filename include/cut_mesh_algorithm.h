@@ -36,7 +36,7 @@ public:
   CutMesh(Args&&... args) : Base(std::forward<Args>(args)...) 
   {
     update_cidx();
-    eps_ = Base::cell_size()*1e-10;
+    eps_ = Base::cell_size()*1e-4;
     i3f = this->template add_cell_data<uint8_t>("is_in_the_interface");
   }
 

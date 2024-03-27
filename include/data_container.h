@@ -140,7 +140,7 @@ public:
   uint32_t add_index()
   {
     data_number_++;
-    /** 当 free_index_ 为空时，没有可用指标所以要重新分配内存 */
+    /** 当 free_index_ 非空时，启用最后一个可用指标 */
     if(!free_index_.empty())
     {
       uint32_t index = free_index_.back();
@@ -149,7 +149,7 @@ public:
       free_index_.pop_back();
       return index; 
     }
-    /** 当 free_index_ 非空时，启用最后一个可用指标 */
+    /** 当 free_index_ 为空时，没有可用指标所以要重新分配内存 */
     else
     {
       for(auto & ptr : data_)
