@@ -131,6 +131,18 @@ public:
   uint8_t is_on_the_halfedge(Point & p, HalfEdge * h);
 
   /**
+   * @brief 判断 p2 在线段 [p0, p1] 上
+   */
+  uint8_t is_collinear(const Point & p0, const Point & p1, const Point & p2)
+  {
+    auto v2 = p2 - p0;
+    auto v1 = p1 - p0;
+    double t = v2.dot(v1)/v1.dot(v1);
+    Point pt = p0*(1-t) + p1*t;
+    return ((pt-p2).length()<eps_) && (t>0) && (t<1);
+  }
+
+  /**
    * @brief 判断 p 是否在 c 的某条边上
    *   - 如果 p 在某个边上, 那么返回的 hp1 是 p 所在的半边。
    *   - 如果 p 和某个顶点重合，那么返回的 hp1 是指向与 p 重合的顶点的半边的。
@@ -458,7 +470,8 @@ private:
    *   c0 中有固定点，那么及时入射点和出射点在同一个半边，那我们也可以加密这个单元
    */
   void _out_cell_1(Cell * c0, HalfEdge* & h0, HalfEdge* & h1, Point & p, 
-      const Vector & v, bool can_be_splite=false);
+      const Point & p0, const Point p1, 
+      bool can_be_splite=false, const std::vector<Cell *> * c1s=nullptr);
 
   /** 
    * @brief 线段 [p0, p1] 与网格相交,  
@@ -525,8 +538,10 @@ typename BaseMesh::HalfEdge * CutMeshAlgorithm<BaseMesh>::_out_cell_0(
  */
 template<typename BaseMesh>
 void CutMeshAlgorithm<BaseMesh>::_out_cell_1(
-    Cell * c0, HalfEdge* & h0, HalfEdge* & h1, Point & p, const Vector & v, bool can_be_splite)
+    Cell * c0, HalfEdge* & h0, HalfEdge* & h1, Point & p, 
+    const Point & p0, const Point p1, bool can_be_splite, const std::vector<Cell *> * c1s)
 {
+  Vector v = p1 - p0;
   if(mesh_->is_same_point(p, h1->previous()->node()->coordinate()))
     h1 = h1->previous();
   if(mesh_->is_same_point(p, h1->node()->coordinate()))/**< 交到顶点上 */
@@ -563,6 +578,16 @@ void CutMeshAlgorithm<BaseMesh>::_out_cell_1(
       }
     }
     h0 = mesh_->find_cell_by_vector_on_node(h1->node(), v);
+    /** 处理特殊情况 1 */
+    if(c1s && std::find(c1s->begin(), c1s->end(), h0->cell()) != c1s->end())
+    {
+      const Point & p2 = h0->previous()->node()->coordinate();
+      const Point & p3 = h0->next()->node()->coordinate();
+      if(mesh_->is_collinear(p, p1, p2))
+        h0 = h0->opposite()->previous();
+      else if(mesh_->is_collinear(p, p1, p3))
+        h0 = h0->next()->opposite();
+    }
   }
   else /**< 没有交到顶点上 */
   {
@@ -589,8 +614,9 @@ typename BaseMesh::HalfEdge * CutMeshAlgorithm<BaseMesh>::_cut_by_segment(
   Cell * c0 = h0->cell();
   while(std::find(c1s.begin(), c1s.end(), c0)==c1s.end())
   { 
-    HalfEdge * h1 = _out_cell_0(h0->next()->next(), h0, p0, p1, p);
-    _out_cell_1(c0, h0, h1, p, p1-p0, false);
+    HalfEdge * h1 = _out_cell_0(h0->next()->next(), h0, p, p1, p);
+    _out_cell_1(c0, h0, h1, p, p0, p1, false, &c1s);
+    //_out_cell_1(c0, h0, h1, p, p0, p1, false);
     c0 = h0->cell();
     p = h0->node()->coordinate();
   }
@@ -633,7 +659,7 @@ uint32_t CutMeshAlgorithm<BaseMesh>::_find_first_point_in_loop_interface(
       else
       {
         HalfEdge * h1 = _out_cell_0(c0->halfedge(), c0->halfedge(), p0, p, p0);
-        _out_cell_1(c0, h0, h1, p0, p-p0);
+        _out_cell_1(c0, h0, h1, p0, p0, p);
         segments.push_back(points.size());
         points.push_back(h0->node()->coordinate());
         return i;
@@ -661,7 +687,7 @@ uint32_t CutMeshAlgorithm<BaseMesh>::_find_first_point_in_loop_interface(
       else
       {
         HalfEdge * h1 = _out_cell_0(c0->halfedge(), c0->halfedge(), p0, p, p0);
-        _out_cell_1(c0, h0, h1, p0, p-p0);
+        _out_cell_1(c0, h0, h1, p0, p0, p);
         segments.push_back(points.size());
         points.push_back(h0->node()->coordinate());
         return i;
@@ -749,7 +775,7 @@ void CutMeshAlgorithm<BaseMesh>::cut_by_loop_interface(Interface & interface)
         /** 转折 */
         Point p;
         HalfEdge * h1 = _out_cell_0(c0->halfedge(), c0->halfedge(), p0, p1, p);
-        _out_cell_1(c0, h0, h1, p, p1-p0, !fpc.empty());
+        _out_cell_1(c0, h0, h1, p, p0, p1, !fpc.empty(), &c1s);
         for(auto & p : fpc)
           mesh_->splite_halfedge(h1->next(), p);
         fpc.clear();
@@ -765,7 +791,7 @@ void CutMeshAlgorithm<BaseMesh>::cut_by_loop_interface(Interface & interface)
         /** 转折 */
         Point p;
         HalfEdge * h1 = _out_cell_0(c0->halfedge(), c0->halfedge(), p0, p1, p);
-        _out_cell_1(c0, h0, h1, p, p1-p0, !fpc.empty());
+        _out_cell_1(c0, h0, h1, p, p0, p1, !fpc.empty(), &c1s);
         for(auto & p : fpc)
           mesh_->splite_halfedge(h1->next(), p);
         fpc.clear();
