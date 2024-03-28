@@ -81,6 +81,11 @@ public:
     return c;
   }
 
+  double eps()
+  {
+    return eps_;
+  }
+
   /**
    * @brief 使用射线法判断点 p 是否在多边形 c 中, 如果没有，就返回一个半边 rh,
    *   rh 是距离 p 最近的半边。
@@ -485,14 +490,16 @@ typename BaseMesh::HalfEdge * CutMeshAlgorithm<BaseMesh>::_out_cell_0(
     HalfEdge * start, HalfEdge * end, const Point & p0, const Point & p1, Point & p)
 {
   uint32_t ii = 0; /**< 防止 start == end */
-  double t = -1, tempt = 0.0;
+  double t = 2, tempt = 0.0;
   HalfEdge * h1 = nullptr;
+  double l = (p1-p0).length();
   for(HalfEdge * h = start; h != end || ii==0; h = h->next())
   {
     auto & q0 = h->previous()->node()->coordinate();
     auto & q1 = h->node()->coordinate();
     bool flag = mesh_->intersection_point_of_two_segments(p0, p1, q0, q1, tempt); 
-    if(flag && t < tempt && tempt < 1)
+    if(flag && t > tempt && tempt > mesh_->eps()/l)
+    //if(flag && t < tempt && tempt < 1)
     {
       t = tempt; h1 = h;
     }
