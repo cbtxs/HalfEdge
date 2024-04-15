@@ -8,26 +8,23 @@
 namespace HEM
 {
 
-class Cell;
-class Edge;
-class Node;
-
-class HalfEdge
+template<typename HalfEdgeMesh_Traits>
+class THalfEdge
 {
 public:
-  HalfEdge(uint32_t index=0) : 
+  THalfEdge(uint32_t index=0) : 
     next_(nullptr), prev_(nullptr), oppo_(this), cell_(nullptr), 
     edge_(nullptr), node_(nullptr), index_(index)  
   {}
 
   /** 数据接口 */
-  HalfEdge * next() {return next_;}
+  THalfEdge * next() {return next_;}
 
-  HalfEdge * previous() {return prev_;}
+  THalfEdge * previous() {return prev_;}
 
-  HalfEdge * opposite() {return oppo_;}
+  THalfEdge * opposite() {return oppo_;}
 
-  HalfEdge * halfedge() {return this;}
+  THalfEdge * halfedge() {return this;}
 
   Cell * cell() {return cell_;}
 
@@ -37,18 +34,18 @@ public:
 
   uint32_t & index() { return index_;}
 
-  HalfEdge * next_oppo() {return next_->opposite();}
+  THalfEdge * next_oppo() {return next_->opposite();}
 
-  HalfEdge * oppo_prev() {return oppo_->previous();}
+  THalfEdge * oppo_prev() {return oppo_->previous();}
 
   /** const 数据接口 */
-  const HalfEdge * next() const {return next_;}
+  const THalfEdge * next() const {return next_;}
 
-  const HalfEdge * previous() const {return prev_;}
+  const THalfEdge * previous() const {return prev_;}
 
-  const HalfEdge * opposite() const {return oppo_;}
+  const THalfEdge * opposite() const {return oppo_;}
 
-  const HalfEdge * halfedge() const {return this;}
+  const THalfEdge * halfedge() const {return this;}
 
   const Cell * cell() const {return cell_;}
 
@@ -58,9 +55,9 @@ public:
 
   const uint32_t & index() const { return index_;}
 
-  const HalfEdge * next_oppo() const {return next_->opposite();}
+  const THalfEdge * next_oppo() const {return next_->opposite();}
 
-  const HalfEdge * oppo_prev() const {return oppo_->previous();}
+  const THalfEdge * oppo_prev() const {return oppo_->previous();}
 
   template<typename Entity>
   Entity & entity()
@@ -74,11 +71,11 @@ public:
   }
 
   /** 设置数据 */
-  void set_next(HalfEdge * next) {next_ = next;}
+  void set_next(THalfEdge * next) {next_ = next;}
 
-  void set_previous(HalfEdge * prev) {prev_ = prev;}
+  void set_previous(THalfEdge * prev) {prev_ = prev;}
 
-  void set_opposite(HalfEdge * oppo) {oppo_ = oppo;}
+  void set_opposite(THalfEdge * oppo) {oppo_ = oppo;}
 
   void set_node(Node * node) {node_ = node;}
 
@@ -88,7 +85,7 @@ public:
 
   void set_index(uint32_t index) {index_=index;}
 
-  void reset(HalfEdge * next, HalfEdge * prev, HalfEdge * oppo, 
+  void reset(THalfEdge * next, THalfEdge * prev, THalfEdge * oppo, 
       Cell * cell, Edge * edge, Node * node, uint32_t index)
   {
     next_ = next; prev_ = prev; oppo_ = oppo;
@@ -96,7 +93,7 @@ public:
     index_ = index;
   }
 
-  HalfEdge & operator=(const HalfEdge& other)
+  THalfEdge & operator=(const THalfEdge& other)
   {
     if (this != &other) /**< 避免自我赋值 */
     {
@@ -110,7 +107,7 @@ public:
   bool is_boundary() { return this==oppo_;}
 
   /** h 到 self 需要 next 的次数 */
-  uint8_t distance(HalfEdge * h)
+  uint8_t distance(THalfEdge * h)
   {
     //assert(h->cell() == cell_)
     uint8_t n = 0;
@@ -130,7 +127,7 @@ public:
 
 private:
   /** 下一条半边, 上一条半边, 对边 */
-  HalfEdge * next_, * prev_, * oppo_;
+  THalfEdge * next_, * prev_, * oppo_;
 
   Cell * cell_; /**< 所属单元*/ 
   Edge * edge_; /**< 所在边*/
@@ -141,25 +138,25 @@ private:
 class Node
 {
 public:
-  static Cell * node2cell[32];
-  static Edge * node2edge[32];
-  static Node * node2node[32];
+  static Cell * node2cell[128];
+  static Edge * node2edge[128];
+  static Node * node2node[128];
 
 public:
   Node(uint32_t index = -1): start_(nullptr), index_(index), coordinate_(0.0, 0.0) {}
 
-  Node(Point & coordinate, uint32_t index, HalfEdge * h = nullptr): 
+  Node(Point & coordinate, uint32_t index, THalfEdge * h = nullptr): 
     start_(h), index_(index), coordinate_(coordinate)
   {}
 
   /** 获取数据 */
-  HalfEdge * halfedge() { return start_; }
+  THalfEdge * halfedge() { return start_; }
 
   uint32_t & index() { return index_; }
 
   Point & coordinate() { return coordinate_;}
 
-  const HalfEdge * halfedge() const { return start_; }
+  const THalfEdge * halfedge() const { return start_; }
 
   const uint32_t & index() const { return index_; }
 
@@ -168,11 +165,11 @@ public:
   /** 设置数据 */
   void set_coordinate(const Point & p) { coordinate_ = p;}
 
-  void set_halfedge(HalfEdge * h) { start_ = h;}
+  void set_halfedge(THalfEdge * h) { start_ = h;}
 
   void set_index(uint32_t index) { index_ = index;}
 
-  void reset(const Point & p, uint32_t index, HalfEdge * h) 
+  void reset(const Point & p, uint32_t index, THalfEdge * h) 
   { 
     index_ = index; 
     start_ = h; 
@@ -193,14 +190,14 @@ public:
   }
 
 private:
-  HalfEdge * start_;
+  THalfEdge * start_;
   uint32_t index_;
   Point coordinate_;
 };
 
-Cell * Node::node2cell[32] = {nullptr};
-Edge * Node::node2edge[32] = {nullptr};
-Node * Node::node2node[32] = {nullptr};
+Cell * Node::node2cell[128] = {nullptr};
+Edge * Node::node2edge[128] = {nullptr};
+Node * Node::node2node[128] = {nullptr};
 
 /**
  * @brief Edge 类
@@ -213,19 +210,19 @@ public:
   static uint8_t edge2cellIdx[2];
 
 public:
-  Edge(uint32_t index=-1, HalfEdge * h = nullptr): start_(h), index_(index) {}
+  Edge(uint32_t index=-1, THalfEdge * h = nullptr): start_(h), index_(index) {}
 
-  HalfEdge * halfedge() { return start_; }
+  THalfEdge * halfedge() { return start_; }
 
   uint32_t & index() { return index_; }
 
-  const HalfEdge * halfedge() const { return start_; }
+  const THalfEdge * halfedge() const { return start_; }
 
-  void set_halfedge(HalfEdge * h) { start_ = h;}
+  void set_halfedge(THalfEdge * h) { start_ = h;}
 
   void set_index(uint32_t index) { index_ = index;}
 
-  void reset(uint32_t index, HalfEdge * h) { index_ = index; start_ = h; }
+  void reset(uint32_t index, THalfEdge * h) { index_ = index; start_ = h; }
 
   /** 获取边的邻接关系 */
   void get_top();
@@ -249,7 +246,7 @@ public:
   double length(); 
 
 private:
-  HalfEdge * start_;
+  THalfEdge * start_;
   uint32_t index_;
 };
 
@@ -269,24 +266,30 @@ public:
   static Cell * cell2cell[32];
 
 public:
-  Cell(uint32_t index = -1, HalfEdge * h = nullptr): start_(h), index_(index) {}
+  Cell(uint32_t index = -1, THalfEdge * h = nullptr): start_(h), index_(index) {}
 
-  HalfEdge * halfedge() { return start_; }
+  THalfEdge * halfedge() { return start_; }
 
   uint32_t & index() { return index_; }
 
-  const HalfEdge * halfedge() const { return start_; }
+  const THalfEdge * halfedge() const { return start_; }
 
   const uint32_t & index() const { return index_; }
 
-  void set_halfedge(HalfEdge * h) { start_ = h;}
+  void set_halfedge(THalfEdge * h) { start_ = h;}
 
   void set_index(uint32_t index) { index_ = index;}
 
-  void reset(uint32_t index, HalfEdge * h) { index_ = index; start_ = h; }
+  void reset(uint32_t index, THalfEdge * h) { index_ = index; start_ = h; }
 
   /** 获取单元的邻接关系 */
   uint32_t get_top();
+
+  /** 获取单元的邻接关系 */
+  uint32_t cell_to_edge(Edge ** cell2edge);
+
+  /** 获取单元的邻接关系 */
+  uint32_t cell_to_node(Node ** cell2node);
 
   Cell & operator=(const Cell & other)
   {
@@ -305,7 +308,7 @@ public:
   {
     uint8_t n = 1;
     Point p = start_->node()->coordinate();
-    for(HalfEdge * h = start_->next(); h != start_; h = h->next(), n++)
+    for(THalfEdge * h = start_->next(); h != start_; h = h->next(), n++)
       p += h->node()->coordinate(); 
     return p/n; 
   }
@@ -313,7 +316,7 @@ public:
   double area();
 
 private:
-  HalfEdge * start_;
+  THalfEdge * start_;
   uint32_t index_;
 };
 
@@ -321,33 +324,33 @@ Node * Cell::cell2node[32] = {nullptr};
 Edge * Cell::cell2edge[32] = {nullptr};
 Cell * Cell::cell2cell[32] = {nullptr};
 
-/** HalfEdge 的一些内联函数 */
+/** THalfEdge 的一些内联函数 */
 
 /** 判断一个点是不是在半边的左边 */
-inline bool HalfEdge::is_on_the_left(const Point & p)
+inline bool THalfEdge::is_on_the_left(const Point & p)
 {
   Vector v0 = node_->coordinate()-prev_->node()->coordinate();
   Vector v1 = p-prev_->node()->coordinate();
   return v0.cross(v1)>0;
 }
 
-inline Point HalfEdge::barycenter()
+inline Point THalfEdge::barycenter()
 {
   return (node()->coordinate() + previous()->node()->coordinate())*0.5;
 }
 
-inline Vector HalfEdge::tangential() const 
+inline Vector THalfEdge::tangential() const 
 {
   return node()->coordinate()-previous()->node()->coordinate();
 }
 
-inline Vector HalfEdge::normal() const
+inline Vector THalfEdge::normal() const
 {
   Vector t = tangential();
   return Vector(-t.y, t.x);
 }
 
-inline double HalfEdge::length()
+inline double THalfEdge::length()
 {
   return tangential().length();
 }
@@ -360,7 +363,7 @@ inline uint32_t Node::get_top()
   node2node[0] = start_->node();
   node2edge[0] = start_->edge(); 
   node2cell[0] = start_->cell(); 
-  for(HalfEdge * h = start_->next_oppo(); h != start_ && !h->is_boundary(); 
+  for(THalfEdge * h = start_->next_oppo(); h != start_ && !h->is_boundary(); 
       h = h->next_oppo())
   {
     node2node[N] = h->node();
@@ -409,12 +412,32 @@ inline uint32_t Cell::get_top()
   cell2node[N] = start_->node();
   cell2edge[N] = start_->edge(); 
   cell2cell[N++] = start_->cell(); 
-  for(HalfEdge * h = start_->next(); h != start_; h = h->next())
+  for(THalfEdge * h = start_->next(); h != start_; h = h->next())
   {
     cell2node[N] = h->node();
     cell2edge[N] = h->edge(); 
     cell2cell[N++] = h->opposite()->cell(); 
   }
+  return N;
+}
+
+/** Cell 的一些内联函数 */
+inline uint32_t Cell::cell_to_edge(Edge ** c2e)
+{
+  uint32_t N = 0;
+  c2e[N++] = start_->edge(); 
+  for(THalfEdge * h = start_->next(); h != start_; h = h->next())
+    c2e[N] = h->edge(); 
+  return N;
+}
+
+/** Cell 的一些内联函数 */
+inline uint32_t Cell::cell_to_node(Node ** c2n)
+{
+  uint32_t N = 0;
+  c2n[N++] = start_->node(); 
+  for(THalfEdge * h = start_->next(); h != start_; h = h->next())
+    c2n[N] = h->node(); 
   return N;
 }
 
@@ -424,7 +447,7 @@ inline double Cell::area()
   Vector v0 = start_->node()->coordinate()-p0;
   Vector v1 = start_->next()->node()->coordinate()-p0;
   double a = v0.cross(v1);
-  for(HalfEdge * h = start_->next()->next(); h != start_->previous(); h = h->next())
+  for(THalfEdge * h = start_->next()->next(); h != start_->previous(); h = h->next())
   {
     v0 = v1;
     v1 = h->node()->coordinate()-p0;
@@ -437,7 +460,7 @@ inline double Cell::area()
 inline Point Cell::inner_point() const
 {
   Point p(0, 0);
-  for(HalfEdge* h = start_->next(); h != start_; h = h->next())
+  for(THalfEdge* h = start_->next(); h != start_; h = h->next())
   {
     if(h->tangential().cross(h->next()->tangential())>0)
     {

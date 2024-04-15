@@ -96,5 +96,17 @@ else()
     message(FATAL_ERROR "OpenGL not found. Please install OpenGL and try again.")
 endif()
 
+# 查找 VTK 库
+if(NOT VTK_DIR)
+    set(VTK_DIR "~/.local/vtk/lib/cmake/vtk-9.2")
+endif()
+find_package(VTK)
+if(NOT ${VTK_FOUND})
+    message("VTK not found")
+else()
+    message("Found vtk! ${VTK_USE_FILE}")
+endif()
+
+
 add_subdirectory(test)
 add_subdirectory(apps)

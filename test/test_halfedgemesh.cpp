@@ -5,10 +5,12 @@
 #include "figure.h"
 #include "uniform_mesh.h"
 #include "cut_mesh_algorithm.h"
+#include "VTKMeshWriter.h"
 
 using namespace HEM;
 using Mesh = HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge>;
 using UMesh = UniformMesh;
+using Writer = VTKMeshWriter;
 
 void check_mesh(Mesh & m)
 {
@@ -328,6 +330,15 @@ void test_cut_mesh_algorithm()
   //fig.draw_node(mesh, true);
 }
 
+void test_vtk()
+{
+  UniformMesh mesh(0, 0, 0.1, 0.1, 10, 5);
+  Writer writer;
+  writer.set_points(mesh);
+  writer.set_cells(mesh);
+  writer.write("uniform3d.vtu");
+}
+
 int main()
 {
   //test_uniform_mesh();
@@ -335,5 +346,6 @@ int main()
   //test_simple_mesh();
   //test_splite_halfedge();
   //test_bird_mesh();
-  test_cut_mesh_algorithm();
+  //test_cut_mesh_algorithm();
+  test_vtk();
 }

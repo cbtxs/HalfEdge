@@ -15,16 +15,18 @@
 
 namespace HEM
 {
-template<typename N, typename E, typename C, typename H>
+template<typename Traits>
 class HalfEdgeMeshBase
 {
 public:
-  using Node = N;
-  using Edge = E;
-  using Cell = C;
-  using HalfEdge = H;
+  using Node = typename Traits::Node;
+  using Edge = typename Traits::Edge;
+  using Cell = typename Traits::Cell;
+  using HalfEdge = typename Traits::HalfEdge;
+  using Dim  = typename Traits::Dim;
+  using Point = typename Node::Point;
 
-  using Self = HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge>;
+  using Self = HalfEdgeMeshBase<Traits>;
   using NodeDataContainer = EntityDataContainer<Node, 1024u>;
   using EdgeDataContainer = EntityDataContainer<Edge, 1024u>;
   using CellDataContainer = EntityDataContainer<Cell, 1024u>;
@@ -291,9 +293,19 @@ private:
   std::shared_ptr<HalfEdgeDataContainer> halfedge_data_ptr_;
 };
 
+template<typename N, typename E, typename C, typename H, int D>
+class HalfEdgeMesh_Traits
+{
+  using Node = N; 
+  using Edge = N; 
+  using Cell = N; 
+  using HalfEdge = H;
+  constexpr static const int Dim  = D; 
+};
+
 /** 复制构造函数 */
-template<typename Node, typename Edge, typename Cell, typename HalfEdge>
-HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge>::HalfEdgeMeshBase(
+template<typename Traits>
+HalfEdgeMeshBase<Traits>::HalfEdgeMeshBase(
     const HalfEdgeMeshBase & mesh): HalfEdgeMeshBase() 
 {
   //clear();
@@ -333,8 +345,8 @@ HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge>::HalfEdgeMeshBase(
  * @brief 以单元为中心的网格数据为参数的构造函数
  * @note 关键在于生成半边的顶点
  */
-template<typename Node, typename Edge, typename Cell, typename HalfEdge>
-void HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge>::reinit(double * node, uint32_t * cell, 
+template<typename Traits>
+void HalfEdgeMeshBase<Traits>::reinit(double * node, uint32_t * cell, 
     uint32_t NN, uint32_t NC, uint32_t NV)
 {
   clear();
@@ -409,9 +421,8 @@ void HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge>::reinit(double * node, uint32_
   update();
 }
 
-template<typename Node, typename Edge, typename Cell, typename HalfEdge>
-HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge> & 
-HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge>::operator = (const Self & other)
+template<typename Traits>
+HalfEdgeMeshBase<Traits> & HalfEdgeMeshBase<Traits>::operator = (const Self & other)
 {
   if(this != &other)
   {
@@ -424,10 +435,10 @@ HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge>::operator = (const Self & other)
 /**
  * @brief 节点迭代函数
  */
-template<typename Node, typename Edge, typename Cell, typename HalfEdge>
+template<typename Traits>
 template<typename Entity>
-void HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge>::
-for_each_entity(const std::function<bool(Entity & )> & f)
+void HalfEdgeMeshBase<Traits>::for_each_entity(
+    const std::function<bool(Entity & )> & f)
 {
   auto & entitys = *(get_entity<Entity>());
   for(auto & e : entitys)
@@ -439,19 +450,19 @@ for_each_entity(const std::function<bool(Entity & )> & f)
 /**
  * @brief 节点迭代函数
  */
-template<typename Node, typename Edge, typename Cell, typename HalfEdge>
+template<typename Traits>
 template<typename Entity>
-void HalfEdgeMeshBase<Node, Edge, Cell, HalfEdge>::
-parallel_for_each_entity(const std::function<bool(Entity & )> & f)
+void HalfEdgeMeshBase<Traits>::parallel_for_each_entity(
+    const std::function<bool(Entity & )> & f)
 {
   auto & entitys = *get_entity<Entity>();
   #pragma omp parallel for
   for(auto & e : entitys)
     f(e);
 }
-
-
 }
+
+
 
 
 #endif /* _HalfEdge_MESH_BASE_ */ 
