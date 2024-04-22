@@ -9,8 +9,6 @@
 #include <stack>
 #include <string>
 
-#include "geometry.h"
-
 namespace HEM
 {
 
@@ -26,6 +24,10 @@ public:
   using Edge = typename Mesh::Edge;
   using Node = typename Mesh::Node;
   using HalfEdge = typename Mesh::HalfEdge; 
+
+  using Point  = typename Mesh::Point;
+  using Vector = typename Mesh::Vector;
+
   template<typename Data>
   using Array = typename Base::template Array<Data>;
 
@@ -395,6 +397,9 @@ public:
   using Edge = typename BaseMesh::Edge;
   using Node = typename BaseMesh::Node;
   using HalfEdge = typename BaseMesh::HalfEdge; 
+
+  using Point = typename BaseMesh::Point;
+  using Vector = typename BaseMesh::Vector;
 
   template<typename Data>
   using Array = typename BaseMesh::template Array<Data>;

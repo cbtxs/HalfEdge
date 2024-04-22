@@ -6,7 +6,6 @@
 #include <algorithm>
 
 #include "chunk_array.h"
-#include "entity.h"
 
 namespace HEM {
 

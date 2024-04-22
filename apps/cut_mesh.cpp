@@ -12,10 +12,15 @@
 
 
 using namespace HEM;
-using Mesh = CutMesh<UniformMesh>;
+using Mesh = CutMesh<UniformMesh<2>>;
 using Node = Mesh::Node;
+using Edge = Mesh::Edge;
+using Cell = Mesh::Cell;
 using HalfEdge = Mesh::HalfEdge;
-using CutMeshAlg = CutMeshAlgorithm<UniformMesh>;
+using Point = Mesh::Point;
+using Vector = Mesh::Vector;
+
+using CutMeshAlg = CutMeshAlgorithm<UniformMesh<2>>;
 using Interface = typename CutMeshAlg::Interface;
 
 extern "C"
