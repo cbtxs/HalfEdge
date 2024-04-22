@@ -15,6 +15,23 @@
 
 namespace HEM
 {
+
+/**
+ * @brief 半边网格的特性
+ */
+template<typename N, typename E, typename C, typename H, int D>
+class HalfEdgeMesh_Traits
+{
+  using Node = N; 
+  using Edge = E; 
+  using Cell = C; 
+  using HalfEdge = H;
+  constexpr static const int Dim  = D; 
+};
+
+/**
+ * @brief 半边网格基类
+ */
 template<typename Traits>
 class HalfEdgeMeshBase
 {
@@ -293,16 +310,6 @@ private:
   std::shared_ptr<HalfEdgeDataContainer> halfedge_data_ptr_;
 };
 
-template<typename N, typename E, typename C, typename H, int D>
-class HalfEdgeMesh_Traits
-{
-  using Node = N; 
-  using Edge = N; 
-  using Cell = N; 
-  using HalfEdge = H;
-  constexpr static const int Dim  = D; 
-};
-
 /** 复制构造函数 */
 template<typename Traits>
 HalfEdgeMeshBase<Traits>::HalfEdgeMeshBase(
@@ -460,9 +467,11 @@ void HalfEdgeMeshBase<Traits>::parallel_for_each_entity(
   for(auto & e : entitys)
     f(e);
 }
+
+
+
 }
 
-
-
+#include "imp/halfedge_mesh.inl"
 
 #endif /* _HalfEdge_MESH_BASE_ */ 
