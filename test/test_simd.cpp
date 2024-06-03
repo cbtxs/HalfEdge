@@ -28,18 +28,45 @@ void matrix_multiply_normal(const double* A, const double* B, double* C, int row
 }
 
 // SIMD 矩阵相乘
+//void matrix_multiply_simd(const double* A, const double* B, double* C, int rows, int cols, int common) {
+//    for (int i = 0; i < rows; ++i) {
+//        for (int j = 0; j < cols; ++j) {
+//            __m256d sum = _mm256_setzero_pd();
+//            for (int k = 0; k < common; k += 4) {
+//                __m256d a = _mm256_loadu_pd(&A[i * common + k]);
+//                __m256d b = _mm256_loadu_pd(&B[k * cols + j]);
+//                sum = _mm256_add_pd(sum, _mm256_mul_pd(a, b));
+//            }
+//            double result[4];
+//            _mm256_storeu_pd(result, sum);
+//            C[i * cols + j] = result[0] + result[1] + result[2] + result[3];
+//        }
+//    }
+//}
+
+
 void matrix_multiply_simd(const double* A, const double* B, double* C, int rows, int cols, int common) {
-    for (int i = 0; i < rows; ++i) {
-        for (int j = 0; j < cols; ++j) {
-            __m256d sum = _mm256_setzero_pd();
-            for (int k = 0; k < common; k += 4) {
-                __m256d a = _mm256_loadu_pd(&A[i * common + k]);
-                __m256d b = _mm256_loadu_pd(&B[k * cols + j]);
-                sum = _mm256_add_pd(sum, _mm256_mul_pd(a, b));
+    const int blockSize = 64; // 块的大小，可以根据缓存大小进行调整
+    for (int ii = 0; ii < rows; ii += blockSize) {
+        for (int jj = 0; jj < cols; jj += blockSize) {
+            for (int kk = 0; kk < common; kk += blockSize) {
+                for (int i = ii; i < std::min(ii + blockSize, rows); ++i) {
+                    for (int j = jj; j < std::min(jj + blockSize, cols); ++j) {
+                        __m256d sum = _mm256_setzero_pd();
+                        for (int k = kk; k < std::min(kk + blockSize, common); k += 4) {
+                            // 检查是否会超出数组范围
+                            if (i * common + k + 3 < rows * common && k * cols + j + 3 < common * cols) {
+                                __m256d a = _mm256_load_pd(&A[i * common + k]);
+                                __m256d b = _mm256_load_pd(&B[k * cols + j]);
+                                sum = _mm256_add_pd(sum, _mm256_mul_pd(a, b));
+                            }
+                        }
+                        double result[4];
+                        _mm256_store_pd(result, sum);
+                        C[i * cols + j] += result[0] + result[1] + result[2] + result[3];
+                    }
+                }
             }
-            double result[4];
-            _mm256_storeu_pd(result, sum);
-            C[i * cols + j] = result[0] + result[1] + result[2] + result[3];
         }
     }
 }
@@ -72,14 +99,14 @@ int main() {
 
     double* A = new double[cnum*nA];
     double* B = new double[cnum*nB];
-    double* C_normal = new double[cnum*rows * cols];
+    //double* C_normal = new double[cnum*rows * cols];
     double* C_simd = new double[cnum*rows * cols];
     double* C_blas = new double[cnum*rows * cols];
 
     // Eigen 矩阵
-    std::vector<Eigen::MatrixXd> eigen_A(cnum, Eigen::MatrixXd(rows, common));
-    std::vector<Eigen::MatrixXd> eigen_B(cnum, Eigen::MatrixXd(common, cols));
-    std::vector<Eigen::MatrixXd> eigen_C(cnum, Eigen::MatrixXd(rows, cols));
+    //std::vector<Eigen::MatrixXd> eigen_A(cnum, Eigen::MatrixXd(rows, common));
+    //std::vector<Eigen::MatrixXd> eigen_B(cnum, Eigen::MatrixXd(common, cols));
+    //std::vector<Eigen::MatrixXd> eigen_C(cnum, Eigen::MatrixXd(rows, cols));
 
     // 生成随机矩阵
     auto start_gen = std::chrono::high_resolution_clock::now();
@@ -88,21 +115,21 @@ int main() {
     {
       generate_random_matrix(&A[i*nA], rows, common);
       generate_random_matrix(&B[i*nB], common, cols);
-      eigen_A[i] = Eigen::Map<Eigen::MatrixXd>(&A[i*nA], rows, common);
-      eigen_B[i] = Eigen::Map<Eigen::MatrixXd>(&B[i * nB], common, cols);
+      //eigen_A[i] = Eigen::Map<Eigen::MatrixXd>(&A[i*nA], rows, common);
+      //eigen_B[i] = Eigen::Map<Eigen::MatrixXd>(&B[i * nB], common, cols);
     }
     auto end_gen = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed_gen = end_gen - start_gen;
-    std::cout << "Normal matrix multiplication time: " << elapsed_gen.count() << " seconds\n";
+    std::cout<< "generate matrix time: " << elapsed_gen.count() << " seconds\n";
 
     // 普通矩阵相乘
-    auto start_normal = std::chrono::high_resolution_clock::now();
-    #pragma omp parallel for
-    for(uint32_t i = 0; i < cnum; i++)
-      matrix_multiply_normal(&A[i*nA], &B[i*nB], &C_normal[i*nC], rows, cols, common);
-    auto end_normal = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed_normal = end_normal - start_normal;
-    std::cout << "Normal matrix multiplication time: " << elapsed_normal.count() << " seconds\n";
+    //auto start_normal = std::chrono::high_resolution_clock::now();
+    //#pragma omp parallel for
+    //for(uint32_t i = 0; i < cnum; i++)
+    //  matrix_multiply_normal(&A[i*nA], &B[i*nB], &C_normal[i*nC], rows, cols, common);
+    //auto end_normal = std::chrono::high_resolution_clock::now();
+    //std::chrono::duration<double> elapsed_normal = end_normal - start_normal;
+    //std::cout << "Normal matrix multiplication time: " << elapsed_normal.count() << " seconds\n";
 
     // SIMD 矩阵相乘
     auto start_simd = std::chrono::high_resolution_clock::now();
@@ -115,7 +142,7 @@ int main() {
 
     // BLAS 矩阵相乘
     auto start_blas = std::chrono::high_resolution_clock::now();
-    #pragma omp parallel for
+    //#pragma omp parallel for
     for(uint32_t i = 0; i < cnum; i++)
       matrix_multiply_blas(&A[i*nA], &B[i*nB], &C_blas[i*nC], rows, cols, common);
     auto end_blas = std::chrono::high_resolution_clock::now();
@@ -127,13 +154,13 @@ int main() {
     //#pragma omp parallel for
     //for(uint32_t i = 0; i < cnum; i++)
     //{
-      //matrix_multiply_eigen(eigen_A[i], eigen_B[i], eigen_C[i]);
-      //eigen_A[i] = eigen_A[i].transpose();
+    //  matrix_multiply_eigen(eigen_A[i], eigen_B[i], eigen_C[i]);
+    //  //eigen_A[i] = eigen_A[i].transpose();
     //}
-    for(uint32_t i = 0; i < cnum; i++)
-    {
-      eigen_A[i] = eigen_A[i].transpose();
-    }
+    //for(uint32_t i = 0; i < cnum; i++)
+    //{
+    //  eigen_A[i] = eigen_A[i].transpose();
+    //}
     auto end_eigen = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed_eigen = end_eigen - start_eigen;
     std::cout << "Eigen matrix multiplication time: " << elapsed_eigen.count() << " seconds\n";
@@ -151,7 +178,7 @@ int main() {
     // 释放内存
     delete[] A;
     delete[] B;
-    delete[] C_normal;
+    //delete[] C_normal;
     delete[] C_simd;
 
     return 0;
