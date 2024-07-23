@@ -156,10 +156,6 @@ public:
   using Point  = typename Traits::Point;
   using Vector = typename Traits::Vector;
 
-  static Cell * node2cell[128];
-  static Edge * node2edge[128];
-  static Node * node2node[128];
-
 public:
   TNode(uint32_t index = -1): start_(nullptr), index_(index), coordinate_(0.0, 0.0) {}
 
@@ -194,7 +190,13 @@ public:
     coordinate_ = p;
   }
 
-  uint32_t get_top();
+  uint32_t get_top(Node ** n2n, Edge ** n2e, Cell ** n2c);
+
+  uint32_t adj_cell(Cell ** n2c);
+
+  uint32_t adj_edge(Edge ** n2e);
+
+  uint32_t adj_node(Node ** n2n);
 
   Node & operator=(const Node & other)
   {
@@ -212,14 +214,6 @@ private:
   uint32_t index_;
   Point coordinate_;
 };
-template<typename Traits>
-typename TNode<Traits>::Cell * TNode<Traits>::node2cell[128] = {nullptr};
-
-template<typename Traits>
-typename TNode<Traits>::Edge * TNode<Traits>::node2edge[128] = {nullptr};
-
-template<typename Traits>
-typename TNode<Traits>::Node * TNode<Traits>::node2node[128] = {nullptr};
 
 /**
  * @brief Edge 类
@@ -235,10 +229,6 @@ public:
 
   using Point  = typename Traits::Point;
   using Vector = typename Traits::Vector;
-
-  static Node * edge2node[2];
-  static Cell * edge2cell[2];
-  static uint8_t edge2cellIdx[2];
 
 public:
   TEdge(uint32_t index=-1, HalfEdge * h = nullptr): start_(h), index_(index) {}
@@ -256,7 +246,7 @@ public:
   void reset(uint32_t index, HalfEdge * h) { index_ = index; start_ = h; }
 
   /** 获取边的邻接关系 */
-  void get_top();
+  void get_top(Node ** e2n, Cell ** e2c, uint8_t * e2cidx);
 
   Edge & operator=(const Edge & other)
   {
@@ -280,15 +270,6 @@ private:
   HalfEdge * start_;
   uint32_t index_;
 };
-
-template<typename Traits>
-typename TEdge<Traits>::Node * TEdge<Traits>::edge2node[2] = {nullptr};
-
-template<typename Traits>
-typename TEdge<Traits>::Cell * TEdge<Traits>::edge2cell[2] = {nullptr};
-
-template<typename Traits>
-uint8_t TEdge<Traits>::edge2cellIdx[2] = {255};
 
 /**
  * @brief Cell 类
@@ -327,13 +308,16 @@ public:
   void reset(uint32_t index, HalfEdge * h) { index_ = index; start_ = h; }
 
   /** 获取单元的邻接关系 */
-  uint32_t get_top();
+  uint32_t get_top(Node ** c2n, Edge ** c2e, Cell ** c2c);
 
   /** 获取单元的邻接关系 */
-  uint32_t cell_to_edge(Edge ** cell2edge);
+  uint32_t adj_edge(Edge ** cell2edge);
 
   /** 获取单元的邻接关系 */
-  uint32_t cell_to_node(Node ** cell2node);
+  uint32_t adj_node(Node ** cell2node);
+
+  /** 获取单元的邻接关系 */
+  uint32_t adj_cell(Cell ** cell2cell);
 
   Cell & operator=(const Cell & other)
   {
@@ -412,32 +396,45 @@ inline double THalfEdge<Traits>::length()
 
 /** Node 的一些内联函数 */
 template<typename Traits>
-inline uint32_t TNode<Traits>::get_top()
+inline uint32_t TNode<Traits>::get_top(Node ** n2n, Edge ** n2e, Cell ** n2c)
 {
   uint32_t N = 1;
-  node2node[0] = start_->node();
-  node2edge[0] = start_->edge(); 
-  node2cell[0] = start_->cell(); 
+  n2n[0] = start_->node();
+  n2e[0] = start_->edge(); 
+  n2c[0] = start_->cell(); 
   for(HalfEdge * h = start_->next_oppo(); h != start_ && !h->is_boundary(); 
       h = h->next_oppo())
   {
-    node2node[N] = h->node();
-    node2edge[N] = h->edge(); 
-    node2cell[N++] = h->cell(); 
+    n2n[N] = h->node();
+    n2e[N] = h->edge(); 
+    n2c[N++] = h->cell(); 
+  }
+  return N;
+}
+
+template<typename Traits>
+inline uint32_t TNode<Traits>::adj_cell(Cell ** n2c)
+{
+  uint32_t N = 1;
+  n2c[0] = start_->cell(); 
+  for(HalfEdge * h = start_->next_oppo(); h != start_ && !h->is_boundary(); 
+      h = h->next_oppo())
+  {
+    n2c[N++] = h->cell(); 
   }
   return N;
 }
 
 /** Edge 的一些内联函数 */
 template<typename Traits>
-inline void TEdge<Traits>::get_top()
+inline void TEdge<Traits>::get_top(Node ** e2n, Cell ** e2c, uint8_t * e2cidx)
 {
-  edge2node[0] = start_->previous()->node();
-  edge2node[1] = start_->node();
-  edge2cell[0] = start_->cell(); 
-  edge2cell[1] = start_->cell(); 
-  edge2cellIdx[0] = start_->distance(start_->cell()->halfedge());
-  edge2cellIdx[0] = start_->opposite()->distance(start_->opposite()->cell()->halfedge());
+  e2n[0] = start_->previous()->node();
+  e2n[1] = start_->node();
+  e2c[0] = start_->cell(); 
+  e2c[1] = start_->cell(); 
+  e2cidx[0] = start_->distance(start_->cell()->halfedge());
+  e2cidx[0] = start_->opposite()->distance(start_->opposite()->cell()->halfedge());
 }
 
 template<typename Traits>
@@ -467,23 +464,23 @@ inline typename TEdge<Traits>::Point TEdge<Traits>::barycenter() const
 
 /** Cell 的一些内联函数 */
 template<typename Traits>
-uint32_t TCell<Traits>::get_top()
+uint32_t TCell<Traits>::get_top(Node ** c2n, Edge ** c2e, Cell ** c2c)
 {
   uint32_t N = 0;
-  cell2node[N] = start_->node();
-  cell2edge[N] = start_->edge(); 
-  cell2cell[N++] = start_->cell(); 
+  c2n[N] = start_->node();
+  c2e[N] = start_->edge(); 
+  c2c[N++] = start_->cell(); 
   for(HalfEdge * h = start_->next(); h != start_; h = h->next())
   {
-    cell2node[N] = h->node();
-    cell2edge[N] = h->edge(); 
-    cell2cell[N++] = h->opposite()->cell(); 
+    c2n[N] = h->node();
+    c2e[N] = h->edge(); 
+    c2c[N++] = h->opposite()->cell(); 
   }
   return N;
 }
 
 template<typename Traits>
-uint32_t TCell<Traits>::cell_to_edge(Edge ** c2e)
+uint32_t TCell<Traits>::adj_edge(Edge ** c2e)
 {
   uint32_t N = 0;
   c2e[N++] = start_->edge(); 
@@ -494,12 +491,23 @@ uint32_t TCell<Traits>::cell_to_edge(Edge ** c2e)
 
 /** Cell 的一些内联函数 */
 template<typename Traits>
-uint32_t TCell<Traits>::cell_to_node(Node ** c2n)
+uint32_t TCell<Traits>::adj_node(Node ** c2n)
 {
   uint32_t N = 0;
   c2n[N++] = start_->node(); 
   for(HalfEdge * h = start_->next(); h != start_; h = h->next())
     c2n[N] = h->node(); 
+  return N;
+}
+
+/** Cell 的一些内联函数 */
+template<typename Traits>
+uint32_t TCell<Traits>::adj_cell(Cell ** c2c)
+{
+  uint32_t N = 0;
+  c2c[N++] = start_->cell(); 
+  for(HalfEdge * h = start_->next(); h != start_; h = h->next())
+    c2c[N] = h->cell(); 
   return N;
 }
 

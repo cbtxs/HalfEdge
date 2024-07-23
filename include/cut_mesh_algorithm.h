@@ -370,9 +370,10 @@ typename BaseMesh::HalfEdge * CutMesh<BaseMesh>::get_cell_of_point(
     auto q1 = h->node()->coordinate();
     if(is_same_point(q1, p)) /**< 与终点重合 */
     {
-      uint32_t N = h->node()->get_top();
+      Cell * node2cell[32];
+      uint32_t N = h->node()->adj_cell(node2cell);
       for(uint32_t ii = 0; ii < N; ii++)
-        c1s.push_back(h->node()->node2cell[ii]);
+        c1s.push_back(node2cell[ii]);
     }
     else /** 在边内部 */
     {
@@ -717,10 +718,11 @@ void CutMeshAlgorithm<BaseMesh>::get_inner_cell(Array<uint8_t> & is_in_the_inter
   {
     typename Mesh::Cell * c = inner_cell.top();
     inner_cell.pop();
-    uint32_t N = c->get_top();
+    Cell * cell2cell[32];
+    uint32_t N = c->adj_cell(cell2cell);
     for(uint8_t i = 0; i < N; i++)
     {
-      typename Mesh::Cell * ci = c->cell2cell[i];
+      typename Mesh::Cell * ci = cell2cell[i];
       if(is_in_the_interface[ci->index()]==0)
       {
         inner_cell.push(ci);

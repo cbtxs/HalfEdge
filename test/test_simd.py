@@ -1,7 +1,7 @@
 import time
 import numpy as np
 
-N = 10000
+N = 40000
 a = 100
 
 A = np.random.rand(N, a, a)
@@ -9,11 +9,11 @@ B = np.random.rand(N, a, a)
 C = np.zeros((N, a, a))
 
 start = time.time()
-C[:] = A@B
+C = A@B
 end = time.time()
 print("Time taken for numpy matrix multiplication: ", end-start)
 start = time.time()
-C = C*1
+C *= 1
 end = time.time()
 print("Time taken for numpy matrix multiplication: ", end-start)
 

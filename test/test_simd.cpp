@@ -28,48 +28,23 @@ void matrix_multiply_normal(const double* A, const double* B, double* C, int row
 }
 
 // SIMD 矩阵相乘
-//void matrix_multiply_simd(const double* A, const double* B, double* C, int rows, int cols, int common) {
-//    for (int i = 0; i < rows; ++i) {
-//        for (int j = 0; j < cols; ++j) {
-//            __m256d sum = _mm256_setzero_pd();
-//            for (int k = 0; k < common; k += 4) {
-//                __m256d a = _mm256_loadu_pd(&A[i * common + k]);
-//                __m256d b = _mm256_loadu_pd(&B[k * cols + j]);
-//                sum = _mm256_add_pd(sum, _mm256_mul_pd(a, b));
-//            }
-//            double result[4];
-//            _mm256_storeu_pd(result, sum);
-//            C[i * cols + j] = result[0] + result[1] + result[2] + result[3];
-//        }
-//    }
-//}
-
-
 void matrix_multiply_simd(const double* A, const double* B, double* C, int rows, int cols, int common) {
-    const int blockSize = 64; // 块的大小，可以根据缓存大小进行调整
-    for (int ii = 0; ii < rows; ii += blockSize) {
-        for (int jj = 0; jj < cols; jj += blockSize) {
-            for (int kk = 0; kk < common; kk += blockSize) {
-                for (int i = ii; i < std::min(ii + blockSize, rows); ++i) {
-                    for (int j = jj; j < std::min(jj + blockSize, cols); ++j) {
-                        __m256d sum = _mm256_setzero_pd();
-                        for (int k = kk; k < std::min(kk + blockSize, common); k += 4) {
-                            // 检查是否会超出数组范围
-                            if (i * common + k + 3 < rows * common && k * cols + j + 3 < common * cols) {
-                                __m256d a = _mm256_load_pd(&A[i * common + k]);
-                                __m256d b = _mm256_load_pd(&B[k * cols + j]);
-                                sum = _mm256_add_pd(sum, _mm256_mul_pd(a, b));
-                            }
-                        }
-                        double result[4];
-                        _mm256_store_pd(result, sum);
-                        C[i * cols + j] += result[0] + result[1] + result[2] + result[3];
-                    }
-                }
+    for (int i = 0; i < rows; ++i) {
+        for (int j = 0; j < cols; ++j) {
+           // __m512d sum0 = _mm512_setzero_pd();
+            __m256d sum = _mm256_setzero_pd();
+            for (int k = 0; k < common; k += 4) {
+                __m256d a = _mm256_loadu_pd(&A[i * common + k]);
+                __m256d b = _mm256_loadu_pd(&B[k * cols + j]);
+                sum = _mm256_add_pd(sum, _mm256_mul_pd(a, b));
             }
+            double result[4];
+            _mm256_storeu_pd(result, sum);
+            C[i * cols + j] = result[0] + result[1] + result[2] + result[3];
         }
     }
 }
+
 
 void matrix_multiply_blas(const double* A, const double* B, double* C, int rows, int cols, int common) {
     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, rows, cols, common, 1.0, A, common, B, cols, 0.0, C, cols);
@@ -87,11 +62,13 @@ void generate_random_matrix(double* matrix, int rows, int cols) {
     }
 }
 
-int main() {
-    const uint32_t rows = 100;
-    const uint32_t cols = 100;
-    const uint32_t common = 100;
-    const uint32_t cnum = 10000;
+int main(int , char** argv) {
+    int N0 = std::stoi(argv[1]);
+    int N1 = std::stoi(argv[2]);
+    const uint32_t rows = N0;
+    const uint32_t cols = N0;
+    const uint32_t common = N0;
+    const uint32_t cnum = N1;
 
     uint32_t nA = rows * common;
     uint32_t nB = cols * common;
