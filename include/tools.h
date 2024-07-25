@@ -1,39 +1,79 @@
+#ifndef TOOLS_H
+#define TOOLS_H
+
+#include <ios>
 #include <vector>
 #include <span>
 #include <iostream>
 
-// 定义一个不规则二维数组的类
-class JaggedArray {
+namespace HEM
+{
+
+/*
+ * @brief 一个不规则二维数组的类
+ */
+template <typename T>
+class IrregularArray2D 
+{
 public:
-    // 添加一行数据
-    void addRow(const std::vector<int>& row) {
-        startPositions.push_back(data.size());
-        data.insert(data.end(), row.begin(), row.end());
-        rowSizes.push_back(row.size());
-    }
+  /** 
+   * @brief 构造函数
+   */
+  IrregularArray2D() = default;
 
-    // 获取指定行的视图
-    std::span<int> getRow(size_t rowIndex) {
-        if (rowIndex >= startPositions.size()) {
-            throw std::out_of_range("Row index out of range");
-        }
-        return std::span<int>(data.data() + startPositions[rowIndex], rowSizes[rowIndex]);
-    }
+  /** 
+   * @brief 获取行数
+   */
+  size_t len() const 
+  {
+    return start_pos.size() - 1;
+  }
 
-    // 打印所有行数据
-    void print() {
-        for (size_t i = 0; i < startPositions.size(); ++i) {
-            auto row = getRow(i);
-            std::cout << "Row " << i << ": ";
-            for (auto& elem : row) {
-                std::cout << elem << " ";
-            }
-            std::cout << std::endl;
-        }
-    }
+  /**
+   * @brief 获取指定行的大小
+   */
+  size_t row_size(size_t row) const
+  {
+    return start_pos[row + 1] - start_pos[row];
+  }
+
+  /** 
+   * @brief 获取指定行的视图 
+   */
+  std::span<T> get_row(size_t row) 
+  {
+    auto loc = start_pos[row];
+    auto rowsize = row_size(row); 
+    return std::span<T>(data.data() + loc, rowsize);
+  }
+
+  /** 
+   * @brief 获取指定行的视图 
+   */
+  std::span<T> operator[](size_t rowIndex) 
+  {
+    return get_row(rowIndex);
+  }
+
+  /** 
+   * @brief 获取所有数据
+   */
+  std::vector<T> & get_data()
+  {
+    return data;
+  }
+
+  /** 
+   * @brief 获取每行的起始位置
+   */
+  std::vector<size_t> & get_start_pos()
+  {
+    return start_pos;
+  }
 
 private:
-    std::vector<int> data;                 // 存储所有数据
-    std::vector<size_t> startPositions;    // 存储每行的起始位置
-    std::vector<size_t> rowSizes;          // 存储每行的大小
+    std::vector<T> data;                 /**< 存储所有数据 */
+    std::vector<size_t> start_pos;    /**< 存储每行的起始位置 */
 };
+}
+#endif // TOOLS_H

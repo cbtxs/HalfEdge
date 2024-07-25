@@ -9,6 +9,8 @@
 #include <stack>
 #include <string>
 
+#include "tools.h"
+
 namespace HEM
 {
 
@@ -33,15 +35,15 @@ public:
   using Array = typename Base::template Array<Data>;
 
   /** 单元是否在界面内部的标记， 0 表示在外部，1 表示在内部 */
-  std::shared_ptr<Array<uint8_t>> i3f; 
+  std::shared_ptr<Array<uint8_t>> cellmarker; 
 
   /** 判断点与边的关系 */
   enum PEStatus 
   {
-    OUTSIDE = 0,
+    OUTSIDE_EDGE = 0,
     ON_THE_EDGE = 1, 
-    ON_THE_START_POINT = 1,
-    ON_THE_END_POINT = 2
+    ON_THE_START_POINT = 2,
+    ON_THE_END_POINT = 3
   };
 
   /** 判断点与单元的关系 */
@@ -54,46 +56,54 @@ public:
   };
 
 private:
-  /** 用于加速查找 */
-  std::vector<Cell * > subcell_;
+  /** 
+   * @brief 背景网格中单元的子单元
+   */
+  IrregularArray2D<Cell *> subcell_;
 
-  /**  */
-  std::vector<uint32_t> cidx_;
-
-  /** 用于加速查找 */
+  /** 容差 */
   double eps_;
 
 public:
+  /**
+   * @brief 默认构造函数
+   */
   template<typename... Args>
   CutMesh(Args&&... args) : Base(std::forward<Args>(args)...) 
   {
     update_cidx();
     eps_ = Base::cell_size()*1e-4;
-    i3f = this->template add_cell_data<uint8_t>("is_in_the_interface");
+    cellmarker = this->template add_cell_data<uint8_t>("is_in_the_interface");
   }
 
+  /**
+   * @brief 更新 subcell_
+   */
   void update_cidx()
   {
     uint32_t NC = Base::number_of_cells();
-    subcell_.resize(NC);
+    auto & data = subcell_.get_data();
+    auto & start = subcell_.get_start_pos();
 
-    std::fill(cidx_.begin(), cidx_.end(), 0.0);
-    cidx_.resize(NC+1, 0);
+    data.resize(NC);
+
+    std::fill(start.begin(), start.end(), 0.0);
+    start.resize(NC+1, 0);
     auto & cell = *Base::get_cell();
     for(auto & c : cell)
     {
       uint32_t idx = Base::find_point(c.barycenter());
-      cidx_[idx+1]++;
+      start[idx+1]++;
     }
 
     for(uint32_t i = 1; i < NC+1; i++)
-      cidx_[i] += cidx_[i-1];
+      start[i] += start[i-1];
 
     std::vector<uint32_t> I(NC, 0);
     for(auto & c : cell)
     {
       uint32_t idx = Base::find_point(c.barycenter());
-      subcell_[cidx_[idx]+I[idx]] = &c;
+      data[start[idx]+I[idx]] = &c;
       I[idx]++;
     }
   }
@@ -102,15 +112,14 @@ public:
   {
     HalfEdge * h = nullptr;
     uint32_t idx = Base::find_point(p);
-    Cell * c = nullptr;
-    for(uint32_t i = cidx_[idx]; i < cidx_[idx+1]; i++)
+    auto cellc = subcell_[idx];
+    for(auto & c : cellc)
     {
-      c = subcell_[i]; 
       bool flag = is_on_the_polygon(p, c, h, maybe_on_the_edge);
       if(flag==1)
-        break;
+        return c;
     }
-    return c;
+    return nullptr;
   }
 
   double eps()
@@ -585,8 +594,8 @@ void CutMeshAlgorithm<BaseMesh>::_out_cell_1(
     if(can_be_splite)
     {
       mesh_->splite_cell(c0, h0, h1);
-      (*(mesh_->i3f))[h0->cell()->index()] = 1;
-      (*(mesh_->i3f))[h1->cell()->index()] = 2;
+      (*(mesh_->cellmarker))[h0->cell()->index()] = 1;
+      (*(mesh_->cellmarker))[h1->cell()->index()] = 2;
     }
     else if(h0)
     {
@@ -594,18 +603,18 @@ void CutMeshAlgorithm<BaseMesh>::_out_cell_1(
       if(flag==2)
       {
         mesh_->splite_cell(c0, h0, h1);
-        (*(mesh_->i3f))[h0->cell()->index()] = 1;
-        (*(mesh_->i3f))[h1->cell()->index()] = 2;
+        (*(mesh_->cellmarker))[h0->cell()->index()] = 1;
+        (*(mesh_->cellmarker))[h1->cell()->index()] = 2;
       }
       else if(flag==1)
       {
-        (*(mesh_->i3f))[h0->cell()->index()] = 1;
-        (*(mesh_->i3f))[h1->opposite()->cell()->index()] = 2;
+        (*(mesh_->cellmarker))[h0->cell()->index()] = 1;
+        (*(mesh_->cellmarker))[h1->opposite()->cell()->index()] = 2;
       }
       else if(flag==0)
       {
-        (*(mesh_->i3f))[h0->opposite()->cell()->index()] = 1;
-        (*(mesh_->i3f))[h1->cell()->index()] = 2;
+        (*(mesh_->cellmarker))[h0->opposite()->cell()->index()] = 1;
+        (*(mesh_->cellmarker))[h1->cell()->index()] = 2;
       }
     }
     h0 = mesh_->find_cell_by_vector_on_node(h1->node(), v);
@@ -627,8 +636,8 @@ void CutMeshAlgorithm<BaseMesh>::_out_cell_1(
     if(h0)
     {
       mesh_->splite_cell(c0, h0, h1);
-      (*(mesh_->i3f))[h0->cell()->index()] = 1;
-      (*(mesh_->i3f))[h1->cell()->index()] = 2;
+      (*(mesh_->cellmarker))[h0->cell()->index()] = 1;
+      (*(mesh_->cellmarker))[h1->cell()->index()] = 2;
     }
     h0 = h1->opposite()->previous();
   }
@@ -765,7 +774,7 @@ void CutMeshAlgorithm<BaseMesh>::cut_by_loop_interface(Interface & interface)
   std::cout << "cuting..." << std::endl;
 
   /** 设置单元状态为在界面外部 */
-  auto & is_in_the_interface = *(mesh_->i3f);
+  auto & is_in_the_interface = *(mesh_->cellmarker);
   for(auto & t : is_in_the_interface)
     t = 0;
 
@@ -853,8 +862,8 @@ void CutMeshAlgorithm<BaseMesh>::cut_by_loop_interface(Interface & interface)
       if(!fpc.empty())
       {
         mesh_->splite_cell(c0, h0, hp1);
-        (*(mesh_->i3f))[h0->cell()->index()] = 1;
-        (*(mesh_->i3f))[hp1->cell()->index()] = 2;
+        (*(mesh_->cellmarker))[h0->cell()->index()] = 1;
+        (*(mesh_->cellmarker))[hp1->cell()->index()] = 2;
       }
       else if(h0 != hp1)
       {
@@ -862,18 +871,18 @@ void CutMeshAlgorithm<BaseMesh>::cut_by_loop_interface(Interface & interface)
         if(flag==2)
         {
           mesh_->splite_cell(c0, h0, hp1);
-          (*(mesh_->i3f))[h0->cell()->index()] = 1;
-          (*(mesh_->i3f))[hp1->cell()->index()] = 2;
+          (*(mesh_->cellmarker))[h0->cell()->index()] = 1;
+          (*(mesh_->cellmarker))[hp1->cell()->index()] = 2;
         }
         else if(flag==1)
         {
-          (*(mesh_->i3f))[h0->cell()->index()] = 2;
-          (*(mesh_->i3f))[hp1->opposite()->cell()->index()] = 1;
+          (*(mesh_->cellmarker))[h0->cell()->index()] = 2;
+          (*(mesh_->cellmarker))[hp1->opposite()->cell()->index()] = 1;
         }
         else if(flag==0)
         {
-          (*(mesh_->i3f))[h0->opposite()->cell()->index()] = 1;
-          (*(mesh_->i3f))[hp1->cell()->index()] = 2;
+          (*(mesh_->cellmarker))[h0->opposite()->cell()->index()] = 1;
+          (*(mesh_->cellmarker))[hp1->cell()->index()] = 2;
         }
       }
       for(auto & p : fpc)
