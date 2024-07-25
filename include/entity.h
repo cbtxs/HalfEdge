@@ -35,6 +35,20 @@ public:
 
   HalfEdge * halfedge() {return this;}
 
+  HalfEdge * next(uint32_t i) 
+  {
+    HalfEdge * h = this;
+    for(uint32_t j = 0; j < i; j++) h = h->next();
+    return h;
+  }
+
+  HalfEdge * previous(uint32_t i) 
+  {
+    HalfEdge * h = this;
+    for(uint32_t j = 0; j < i; j++) h = h->previous();
+    return h;
+  }
+
   Cell * cell() {return cell_;}
 
   Edge * edge() {return edge_;}
@@ -319,6 +333,33 @@ public:
   /** 获取单元的邻接关系 */
   uint32_t adj_cell(Cell ** cell2cell);
 
+  /** 获取单元的顶点 */
+  uint32_t vertices(Point ** vertices);
+
+  /** 单元第 i 个邻接边 */
+  Edge * adj_edge(uint32_t i) const 
+  { 
+    return start_->next(i)->edge(); 
+  }
+
+  /** 单元第 i 个邻接点 */
+  Node * adj_node(uint32_t i) const 
+  { 
+    return start_->previous()->next(i)->node(); 
+  }
+
+  /** 单元第 i 个邻接单元 */
+  Cell * adj_cell(uint32_t i) const
+  { 
+    return start_->next(i)->opposite()->cell(); 
+  }
+
+  /** 单元第 i 个顶点的坐标 */
+  Point * vertex(uint32_t i) const 
+  { 
+    return &(adj_node(i)->coordinate());
+  }
+
   Cell & operator=(const Cell & other)
   {
     if (this != &other) /**< 避免自我赋值 */
@@ -489,18 +530,16 @@ uint32_t TCell<Traits>::adj_edge(Edge ** c2e)
   return N;
 }
 
-/** Cell 的一些内联函数 */
 template<typename Traits>
 uint32_t TCell<Traits>::adj_node(Node ** c2n)
 {
   uint32_t N = 0;
-  c2n[N++] = start_->node(); 
-  for(HalfEdge * h = start_->next(); h != start_; h = h->next())
+  c2n[N++] = start_->previous()->node(); 
+  for(HalfEdge * h = start_; h != start_->previous(); h = h->next())
     c2n[N] = h->node(); 
   return N;
 }
 
-/** Cell 的一些内联函数 */
 template<typename Traits>
 uint32_t TCell<Traits>::adj_cell(Cell ** c2c)
 {
@@ -508,6 +547,16 @@ uint32_t TCell<Traits>::adj_cell(Cell ** c2c)
   c2c[N++] = start_->cell(); 
   for(HalfEdge * h = start_->next(); h != start_; h = h->next())
     c2c[N] = h->cell(); 
+  return N;
+}
+
+template <typename Traits>
+uint32_t TCell<Traits>::vertices(Point ** vertices)
+{
+  uint32_t N = 0;
+  vertices[N++] = &start_->previous()->node()->coordinate();
+  for(HalfEdge * h = start_; h != start_->previous(); h = h->next())
+    vertices[N++] = &h->node()->coordinate();
   return N;
 }
 

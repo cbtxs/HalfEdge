@@ -22,3 +22,5 @@ target_link_libraries(test_gl ${GLFW_LIBRARIES} ${OPENGL_LIBRARIES} glad)
 
 add_executable(test_gl_tri test_gl_tri.cpp)
 target_link_libraries(test_gl_tri ${GLFW_LIBRARIES} ${OPENGL_LIBRARIES} glad)
+
+add_executable(test_irregulararray2d test_irregulararray2d.cpp)

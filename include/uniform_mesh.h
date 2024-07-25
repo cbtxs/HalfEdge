@@ -176,5 +176,8 @@ UniformMesh<D>::UniformMesh(double orign_x,
   }
 }
 
+using UniformMesh2D = UniformMesh<2>;
+
+
 }
 #endif /* _UNIFORM_MESH_ */ 
