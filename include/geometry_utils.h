@@ -223,7 +223,9 @@ public:
   uint8_t intersection_points_of_segments_and_polygon(const std::vector<Point2d*>& polygon, 
                                              const Point2d& p0, 
                                              const Point2d& p1, 
-                                             std::vector<std::pair<Point2d, uint32_t>>& points) const
+                                             std::vector<Point2d> & points, 
+                                             std::vector<uint32_t> & index,
+                                             std::vector<uint8_t> & type) const
   {
     uint32_t n = polygon.size(); 
     for (uint32_t i = 0; i < n; i++)
@@ -234,27 +236,22 @@ public:
       uint8_t flag = relative_position_of_two_segments(p0, p1, q0, q1, p);
       if (flag == 1)
       {
-        points.emplace_back(p, i);
+        points.emplace_back(p);
+        index.emplace_back(i);
+        type.emplace_back(1);
       }
       else if (flag == 0)
       {
-        points.emplace_back(p0, i);
-        points.emplace_back(p1, (i + 1) % n);
+        points.emplace_back(p0);
+        points.emplace_back(p1);
+        index.emplace_back(i);
+        index.emplace_back((i + 1) % n);
+        type.emplace_back(0);
+        type.emplace_back(0);
       }
     }
-    /** 根据交点在 p0, p1 之间的位置排序 */
-    std::sort(points.begin(), points.end(), 
-      [&](const std::pair<Point2d, uint32_t>& a, const std::pair<Point2d, uint32_t>& b)
-      {
-        return (a.first - p0).length() < (b.first - p0).length();
-      }
-    );
     return points.size();
   }
-
-
-
-
 
 private:
   double tol_;
