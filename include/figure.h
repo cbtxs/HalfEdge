@@ -255,19 +255,21 @@ void Figure::draw_halfedge(Mesh & m, bool showindex)
 template<typename Mesh>
 void Figure::draw_node(Mesh & m, bool showindex)
 {
+  using Cell = typename Mesh::Cell;
   auto & nodes = *(m.get_node());
   if(showindex)
   {
     uint32_t n = 0;
     std::array<double, 4> pcolor = {1, 0, 0, 1};
     std::array<double, 4> textcolor = {0, 0, 0, 1};
+    Cell * n2c[32];
     for(auto & node : nodes)
     {
       auto p = node.coordinate();
       double size = 1e100;
-      uint32_t N = node.get_top();
+      uint32_t N = node.adj_cell(n2c);
       for(uint32_t i = 0; i < N; i++)
-        size = std::min(size, node.node2cell[i]->area());
+        size = std::min(size, n2c[i]->area());
       size = 0.018*std::sqrt(size);
       _show_label(p.x+size*0.5, p.y+size*0.5, std::to_string(n), p.x, p.y, size, pcolor, textcolor);
       n++;

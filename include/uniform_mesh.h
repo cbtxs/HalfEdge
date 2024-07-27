@@ -52,7 +52,7 @@ public:
               uint32_t nx, 
               uint32_t ny);
 
-  uint32_t find_point(const Point & p)
+  uint32_t find_point(const Point & p) const
   {
     uint32_t x = floor((p.x-param_.orignx)/param_.hx);
     uint32_t y = floor((p.y-param_.origny)/param_.hy);
@@ -65,6 +65,11 @@ public:
   double cell_size()
   {
     return std::sqrt(param_.hx*param_.hy);
+  }
+
+  double number_of_blocks()
+  {
+    return param_.nx*param_.ny;
   }
 
 private:
@@ -174,6 +179,7 @@ UniformMesh<D>::UniformMesh(double orign_x,
     e.reset(N++, &h);
     h.set_edge(&e);
   }
+  Base::update();
 }
 
 using UniformMesh2D = UniformMesh<2>;

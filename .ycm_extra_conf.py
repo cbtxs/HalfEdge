@@ -26,7 +26,7 @@ mpi_include = result.stdout.decode().strip().split(' ')[-1]
 
 DIR_OF_THIS_SCRIPT = p.abspath(p.dirname(__file__))
 DIR_OF_THIRD_PARTY = p.join(DIR_OF_THIS_SCRIPT, 'third_party')
-SOURCE_EXTENSIONS = ['.cpp', '.cxx', '.cc', '.c', '.m', '.mm']
+SOURCE_EXTENSIONS = ['.cpp', '.cxx', '.cc', '.c', '.m', '.mm', '.inl']
 
 library_include_paths = {
     'vtk': os.path.join(local, 'vtk', 'include', 'vtk-9.2'),

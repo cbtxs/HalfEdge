@@ -41,10 +41,22 @@ public:
    * @param p1 The first point
    * @param p2 The second point
    */
-  bool dist_point_to_line(const Point2d& p0, const Point2d& p1, const Point2d& p) const
+  double dist_point_to_segment(const Point2d & p0, const Point2d & p1, const Point2d & p) const
   {
-    double dist = (p1 - p0).cross(p - p0) / (p1 - p0).length();
-    return std::abs(dist);
+    auto v = p1 - p0;
+    auto w = p  - p0;
+
+    double c1 = w.dot(v);
+    if ( c1 <= 0 )
+      return w.length();
+
+    double c2 = v.dot(v);
+    if ( c2 <= c1 )
+      return (p-p1).length();
+
+    double b = c1 / c2;
+    Point2d pb = p0 + v*b;
+    return (p-pb).length();
   }
 
   /**
@@ -54,9 +66,9 @@ public:
    * @param p1 The second point on the line
    * @param p The point to check
    */
-  bool point_on_line(const Point2d& p0, const Point2d & p1, const Point2d& p) const
+  bool point_on_segment(const Point2d& p0, const Point2d & p1, const Point2d& p) const
   {
-    double dist = dist_point_to_line(p0, p1, p); 
+    double dist = dist_point_to_segment(p0, p1, p); 
     return std::abs(dist) < tol_;
   }
 
@@ -68,7 +80,8 @@ public:
    */
   void project_point_to_line(const Point2d& p0, const Point2d & p1, Point2d& p) const
   {
-    p = p0 + (p1 - p0).normalize() * (p - p0).dot(p1 - p0);
+    auto v = p1 - p0;
+    p = p0 + v*(v.dot(p-p0)/v.dot(v));
   }
 
   /**
@@ -124,7 +137,7 @@ public:
     {
       Point2d & p0 = *polygon[i];
       Point2d & p1 = *polygon[(i + 1) % n];
-      if (point_on_line(p0, p1, p))
+      if (point_on_segment(p0, p1, p))
       { 
         index = i;
         return 2;
@@ -146,7 +159,7 @@ public:
    * @param q1 The second point of the second line segment
    * @param p The intersection point
    */
-  bool intersection_point_of_two_segments(const Point2d& p0, 
+  bool intersection_of_two_segments(const Point2d& p0, 
                                           const Point2d& p1, 
                                           const Point2d& q0, 
                                           const Point2d& q1,
@@ -178,8 +191,10 @@ public:
    * @param q1 The second point of the second line segment
    * @param p The intersection point
    * @return 0 if the two segments are overlapping, 
-   *         1 if the two segments are intersecting at a point, 
-   *         2 if the two segments are not intersecting
+   *         1 if the two segments intersect at the vertex q0, 
+   *         2 if the two segments intersect at the vertex q1,
+   *         3 if the two segments intersect at a point,
+   *         4 if the two segments are not intersecting
    */
   uint8_t relative_position_of_two_segments(const Point2d& p0, 
                                                   const Point2d& p1, 
@@ -187,70 +202,47 @@ public:
                                                   const Point2d& q1,
                                                         Point2d& p) const
   {
-    bool flag0 = point_on_line(q0, q1, p0);
-    bool flag1 = point_on_line(q0, q1, p1);
+    bool flag0 = point_on_segment(p0, p1, q0);
+    bool flag1 = point_on_segment(p0, p1, q1);
     if (flag0 && flag1)
     {
-      return 0;
+      p = q0;
+      return 0; /**< overlapping */
     }
+    else if(flag0)
+    {
+      p = q0;
+      return 1; /**< intersecting at the vertex q0 */
+    }
+    else if(flag1)
+    {
+      p = q1;
+      return 2; /**< intersecting at the vertex q1 */
+    }
+    bool flag2 = point_on_segment(q0, q1, p0);
+    bool flag3 = point_on_segment(q0, q1, p1);
+    if(flag2 || flag3)
+    {
+      p = flag2 ? p0 : p1;
+      return 3; /**< intersecting at a point */
+    }
+
     auto v0 = p1-p0;
     auto v1 = q0-q1;
     auto v2 = q0-p0;
     double den = v0.cross(v1);
     if (den == 0)
     {
-      return 2;
+      return 4; /**< parallel, not intersecting */
     }
     double t = (v2.cross(v1))/den;
-    double s = (v2.cross(v0))/den;
+    double s = (v0.cross(v2))/den;
     if (t >= 0 && t <= 1 && s >= 0 && s <= 1)
     {
       p = p0 + v0*t;
-      return 1;
+      return 3; /**< intersecting at a point */
     }
-    return 2;
-  }
-
-  /**
-   * @brief intersection points of a line segment and a polygon
-   * @param polygon The vertices of the polygon
-   * @param p0 The first point of the line segment
-   * @param p1 The second point of the line segment
-   * @param points The intersection points
-   * @param edges The edges of the polygon that intersect with the line segment
-   * @return The number of intersection points
-   */
-  uint8_t intersection_points_of_segments_and_polygon(const std::vector<Point2d*>& polygon, 
-                                             const Point2d& p0, 
-                                             const Point2d& p1, 
-                                             std::vector<Point2d> & points, 
-                                             std::vector<uint32_t> & index,
-                                             std::vector<uint8_t> & type) const
-  {
-    uint32_t n = polygon.size(); 
-    for (uint32_t i = 0; i < n; i++)
-    {
-      Point2d & q0 = *polygon[i];
-      Point2d & q1 = *polygon[(i + 1) % n];
-      Point2d p;
-      uint8_t flag = relative_position_of_two_segments(p0, p1, q0, q1, p);
-      if (flag == 1)
-      {
-        points.emplace_back(p);
-        index.emplace_back(i);
-        type.emplace_back(1);
-      }
-      else if (flag == 0)
-      {
-        points.emplace_back(p0);
-        points.emplace_back(p1);
-        index.emplace_back(i);
-        index.emplace_back((i + 1) % n);
-        type.emplace_back(0);
-        type.emplace_back(0);
-      }
-    }
-    return points.size();
+    return 4; /**< not intersecting */
   }
 
 private:

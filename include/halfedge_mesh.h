@@ -11,6 +11,7 @@
 #include <memory>
 
 #include "geometry.h"
+#include "geometry_utils.h"
 #include "data_container.h"
 
 namespace HEM
@@ -43,7 +44,7 @@ public:
   using Array = typename NodeDataContainer::Base::template DataArray<T>;
 
 public:
-  HalfEdgeMeshBase() 
+  HalfEdgeMeshBase(): geometry_utils_(1e-10)
   {
     node_data_ptr_ = std::make_shared<NodeDataContainer>();
     edge_data_ptr_ = std::make_shared<EdgeDataContainer>();
@@ -288,11 +289,33 @@ public:
     edge_data_ptr_->update();
     cell_data_ptr_->update();
     halfedge_data_ptr_->update();
+
+    /** 边界点的半边一定要是边界 */
+    auto f = [](HalfEdge & h)->bool
+    {
+      if(h.is_boundary())
+        h.node()->set_halfedge(&h);
+      return true;
+    };
+    for_each_entity<HalfEdge>(f);
   }
 
   Self & operator = (const Self & other);
 
+  GeometryUtils2D & geometry_utils()
+  { 
+    return geometry_utils_; 
+  }
+
+  const GeometryUtils2D & geometry_utils() const
+  { 
+    return geometry_utils_; 
+  }
+
 private:
+  /** 几何工具 */
+  GeometryUtils2D geometry_utils_;
+
   /** 实体数据集合 */
   std::shared_ptr<NodeDataContainer> node_data_ptr_; 
   std::shared_ptr<EdgeDataContainer> edge_data_ptr_;

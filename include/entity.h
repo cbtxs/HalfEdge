@@ -37,14 +37,14 @@ public:
 
   HalfEdge * next(uint32_t i) 
   {
-    HalfEdge * h = this;
+    HalfEdge * h = (HalfEdge*)this;
     for(uint32_t j = 0; j < i; j++) h = h->next();
     return h;
   }
 
   HalfEdge * previous(uint32_t i) 
   {
-    HalfEdge * h = this;
+    HalfEdge * h = (HalfEdge*)this;
     for(uint32_t j = 0; j < i; j++) h = h->previous();
     return h;
   }
@@ -261,6 +261,12 @@ public:
 
   /** 获取边的邻接关系 */
   void get_top(Node ** e2n, Cell ** e2c, uint8_t * e2cidx);
+
+  uint32_t adj_cell(Cell ** n2c);
+
+  uint32_t adj_node(Node ** n2n);
+
+  void vertices(Point ** vertices);
 
   Edge & operator=(const Edge & other)
   {
@@ -479,6 +485,29 @@ inline void TEdge<Traits>::get_top(Node ** e2n, Cell ** e2c, uint8_t * e2cidx)
 }
 
 template<typename Traits>
+inline uint32_t TEdge<Traits>::adj_cell(Cell ** e2c)
+{
+  e2c[0] = start_->cell(); 
+  e2c[1] = start_->opposite()->cell(); 
+  return 2;
+}
+
+template<typename Traits>
+inline uint32_t TEdge<Traits>::adj_node(Node ** e2n)
+{
+  e2n[0] = start_->previous()->node();
+  e2n[1] = start_->node();
+  return 2;
+}
+
+template<typename Traits>
+inline void TEdge<Traits>::vertices(Point ** vertices)
+{
+  vertices[0] = &start_->previous()->node()->coordinate();
+  vertices[1] = &start_->node()->coordinate();
+}
+
+template<typename Traits>
 inline double TEdge<Traits>::length()
 {
   return start_->length();
@@ -526,7 +555,7 @@ uint32_t TCell<Traits>::adj_edge(Edge ** c2e)
   uint32_t N = 0;
   c2e[N++] = start_->edge(); 
   for(HalfEdge * h = start_->next(); h != start_; h = h->next())
-    c2e[N] = h->edge(); 
+    c2e[N++] = h->edge(); 
   return N;
 }
 
@@ -536,7 +565,7 @@ uint32_t TCell<Traits>::adj_node(Node ** c2n)
   uint32_t N = 0;
   c2n[N++] = start_->previous()->node(); 
   for(HalfEdge * h = start_; h != start_->previous(); h = h->next())
-    c2n[N] = h->node(); 
+    c2n[N++] = h->node(); 
   return N;
 }
 
@@ -546,7 +575,7 @@ uint32_t TCell<Traits>::adj_cell(Cell ** c2c)
   uint32_t N = 0;
   c2c[N++] = start_->cell(); 
   for(HalfEdge * h = start_->next(); h != start_; h = h->next())
-    c2c[N] = h->cell(); 
+    c2c[N++] = h->cell(); 
   return N;
 }
 
