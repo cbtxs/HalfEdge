@@ -73,10 +73,10 @@ public:
    * @param out 输出单元
    * @param index 若点在单元边上，返回边的索引，若点在单元顶点上，返回顶点的索引
    * @return 点相对于单元的位置
-   * @retval 0 点在单元外
-   * @retval 1 点在单元内
-   * @retval 2 点在单元边上
-   * @retval 3 点在单元顶点上
+   * @retval 0 点在顶点上
+   * @retval 1 点在单元边上
+   * @retval 2 点在单元内部
+   * @retval 3 点在网格外面
    */
   uint32_t find_point(Point & p, Cell* & out, uint32_t & index) const 
   {
@@ -91,13 +91,13 @@ public:
       int N = c->vertices(points.data());
       points.resize(N);
       uint32_t flag = geo_.relative_position_of_point_and_polygon(points, p, index);
-      if(flag!=0)
+      if(flag!=3)
       {
         out = c;
         return flag;
       }
     }
-    return 0;
+    return 3;
   }
 
 private:

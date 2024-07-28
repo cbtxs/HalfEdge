@@ -268,6 +268,11 @@ public:
 
   void vertices(Point ** vertices);
 
+  bool has_node(Node * n) const
+  {
+    return start_->node() == n || start_->previous()->node() == n;
+  }
+
   Edge & operator=(const Edge & other)
   {
     if (this != &other) /**< 避免自我赋值 */

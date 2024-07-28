@@ -25,18 +25,17 @@ public: /** 类型定义 */
    * @param point 点的坐标
    * @param is_fixed_point 是否是固定点
    * @param cells 点所在的单元
-   * @param edge 点所在的边
-   * @param type 1: 边的第 0 个节点;
-   *             2: 边的第 1 个节点; 
-   *             3: 边的中间点;
-   *             4: 单元内的点;
+   * @param edge 点所在的半边
+   * @param type 0: 半边的节点;
+   *             1: 半边内部; 
+   *             2: 单元内的点;
    */
   struct InterfacePoint
   {
     Point point;
     bool is_fixed_point;
     std::vector<Cell * > cells;
-    Edge * edge;             
+    HalfEdge * h;             
     uint8_t type;             
   };
 
@@ -120,19 +119,19 @@ void InterfaceCut<Mesh>::point_to_interface_point(Point & point, InterfacePoint 
   Cell * c = nullptr;
   uint32_t index = 0;
   uint8_t flag = mesh_->find_point(point, c, index);
-  if(flag == 3)/** 在第 index 个节点上 */
+  if(flag == 0)/** 在第 index 个节点上 */
   {
     Node * node = c->adj_node(index);
-    Edge * edge = c->adj_edge(index);
+    HalfEdge * h = c->halfedge()->previous()->next(index);
 
     cells.resize(32);
     uint32_t N = node->adj_cell(cells.data());
     cells.resize(N);
 
     point   = node->coordinate(); /**< 更新点的坐标 */
-    ip.edge = edge; 
+    ip.h = h; 
   }
-  else if(flag == 2)/** 在第 index 条边上 */
+  else if(flag == 1)/** 在第 index 条边上 */
   {
     Point * p[2];
     Edge  * edge = c->adj_edge(index);
@@ -142,9 +141,9 @@ void InterfaceCut<Mesh>::point_to_interface_point(Point & point, InterfacePoint 
     edge->vertices(p);
     geometry_utils.project_point_to_line(*(p[0]), *(p[2]), point); /**< 更新点的坐标 */
 
-    ip.edge = edge; 
+    ip.h = edge->halfedge(); 
   }
-  else if(flag == 1)/** 在单元内部 */
+  else if(flag == 2)/** 在单元内部 */
   {
     cells.push_back(c);
   }

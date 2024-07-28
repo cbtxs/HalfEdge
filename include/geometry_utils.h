@@ -112,10 +112,11 @@ public:
    * @brief relative of a point and a polygon
    * @param polygon The vertices of the polygon
    * @param p The point to check
-   * @return 0 if the point is outside the polygon,
-   *         1 if the point is in the polygon,
-   *         2 if the point is on a polygon edge,
-   *         3 if the point is a polygon vertex
+   * @param index The index of the vertex or edge
+   * @return 0 if the point is the index-th polygon vertex,
+   *         1 if the point is on the index-th polygon edge,
+   *         2 if the point is inside the polygon
+   *         3 if the point is outside the polygon
    */
   uint8_t relative_position_of_point_and_polygon(
       const std::vector<Point2d*>& polygon, 
@@ -130,7 +131,7 @@ public:
       if (points_equal(p0, p))
       {
         index = i;
-        return 3;
+        return 0;
       }
     }
     for (int i = 0; i < n; i++)
@@ -140,14 +141,14 @@ public:
       if (point_on_segment(p0, p1, p))
       { 
         index = i;
-        return 2;
+        return 1;
       }
     }
     if (point_in_polygon(polygon, p))
     {
-      return 1;
+      return 2;
     }
-    return 0;
+    return 3;
   }
 
 
