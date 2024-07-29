@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <iostream>
 #include "geometry.h"
+#include "view.h"
 
 namespace HEM
 {
@@ -170,6 +171,44 @@ public:
   using Point  = typename Traits::Point;
   using Vector = typename Traits::Vector;
 
+  /** 定义邻接实体的迭代子 */
+  template<typename H, typename N>
+  class AdjNodeIterator : public AdjEntityIteratorBase<AdjNodeIterator<H, N>, H, N>
+  {
+    N * entity_imp(H * h) const { return h->previous()->node(); }
+    H * next_imp(H * h) 
+    { 
+      h = h->next_oppo();
+      if (h->is_boundary() || next==start_) 
+        return nullptr;
+      return h->next_oppo(); 
+    }
+  };
+
+  template<typename H, typename E>
+  class AdjEdgeIterator : public AdjEntityIteratorBase<AdjEdgeIterator<H, E>, H, E>
+  {
+    E * entity_imp(H * h) const { return *(h->edge()); }
+    H * next_imp(H * h) { return h->next_oppo(); }
+  };
+
+  template<typename H, typename C>
+  class AdjCellIterator : public AdjEntityIteratorBase<AdjCellIterator<H, C>, H, C>
+  {
+    C * entity_imp(H * h) const { return h->cell(); }
+    H * next_imp(H * h) { return h->next_oppo(); }
+  };
+
+  /** 定义邻接实体的视图 */
+  using AdjNodeView = AdjEntityViewBase<AdjNodeIterator<HalfEdge, Node>>;
+  using ConstAdjNodeView = AdjEntityViewBase<AdjNodeIterator<const HalfEdge, const Node>>;
+
+  using AdjEdgeView = AdjEntityViewBase<AdjEdgeIterator<HalfEdge, Edge>>;
+  using ConstAdjEdgeView = AdjEntityViewBase<AdjEdgeIterator<const HalfEdge, const Edge>>;
+
+  using AdjCellView = AdjEntityViewBase<AdjCellIterator<HalfEdge, Cell>>;
+  using ConstAdjCellView = AdjEntityViewBase<AdjCellIterator<const HalfEdge, const Cell>>;
+
 public:
   TNode(uint32_t index = -1): start_(nullptr), index_(index), coordinate_(0.0, 0.0) {}
 
@@ -211,6 +250,8 @@ public:
   uint32_t adj_edge(Edge ** n2e);
 
   uint32_t adj_node(Node ** n2n);
+
+  AdjNodeView adj_nodes() const { return AdjNodeView(start_); }
 
   Node & operator=(const Node & other)
   {
@@ -311,9 +352,37 @@ public:
   using Point  = typename Traits::Point;
   using Vector = typename Traits::Vector;
 
-  static Node * cell2node[32];
-  static Edge * cell2edge[32];
-  static Cell * cell2cell[32];
+  /** 定义邻接实体的迭代子 */
+  template<typename H, typename N>
+  class AdjNodeIterator : public AdjEntityIteratorBase<AdjNodeIterator<H, N>, H, N>
+  {
+    N * entity_imp(H * h) const { return h->node(); }
+    H * next_imp(H * h) { return h->next(); }
+  };
+
+  template<typename H, typename E>
+  class AdjEdgeIterator : public AdjEntityIteratorBase<AdjEdgeIterator<H, E>, H, E>
+  {
+    E * entity_imp(H * h) const { return h->edge(); }
+    H * next_imp(H * h) { return h->next(); }
+  };
+
+  template<typename H, typename C>
+  class AdjCellIterator : public AdjEntityIteratorBase<AdjCellIterator<H, C>, H, C>
+  {
+    C * entity_imp(H * h) const { return h->opposite()->cell(); }
+    H * next_imp(H * h) { return h->next(); }
+  };
+
+  /** 定义邻接实体的视图 */
+  using AdjNodeView = AdjEntityViewBase<AdjNodeIterator<HalfEdge, Node>>;
+  using ConstAdjNodeView = AdjEntityViewBase<AdjNodeIterator<const HalfEdge, const Node>>;
+
+  using AdjEdgeView = AdjEntityViewBase<AdjEdgeIterator<HalfEdge, Edge>>;
+  using ConstAdjEdgeView = AdjEntityViewBase<AdjEdgeIterator<const HalfEdge, const Edge>>;
+
+  using AdjCellView = AdjEntityViewBase<AdjCellIterator<HalfEdge, Cell>>;
+  using ConstAdjCellView = AdjEntityViewBase<AdjCellIterator<const HalfEdge, const Cell>>;
 
 public:
   TCell(uint32_t index = -1, HalfEdge * h = nullptr): start_(h), index_(index) {}
@@ -399,15 +468,6 @@ private:
   HalfEdge * start_;
   uint32_t index_;
 };
-
-template<typename Traits>
-typename TCell<Traits>::Node * TCell<Traits>::cell2node[32] = {nullptr};
-
-template<typename Traits>
-typename TCell<Traits>::Edge * TCell<Traits>::cell2edge[32] = {nullptr};
-
-template<typename Traits>
-typename TCell<Traits>::Cell * TCell<Traits>::cell2cell[32] = {nullptr};
 
 /** HalfEdge 的一些内联函数 */
 
