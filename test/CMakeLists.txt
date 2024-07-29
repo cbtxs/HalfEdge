@@ -27,3 +27,5 @@ add_executable(test_irregulararray2d test_irregulararray2d.cpp)
 
 add_executable(test_cut_mesh_alg test_cut_mesh_alg.cpp)
 target_link_libraries(test_cut_mesh_alg ${CAIROMM_LIBRARIES})
+
+add_executable(test_range test_range.cpp)
