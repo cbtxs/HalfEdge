@@ -44,16 +44,32 @@ int test111()
   auto & c_idx = *mesh.get_cell_indices();
   auto & n_idx = *mesh.get_node_indices();
 
-  auto & c = cell[10];
+  auto & c = cell[0];
   auto & n = node[10];
 
 
   std::cout << c_idx[c.index()] << std::endl;
   auto c_adjs = c.adj_cells();
+  auto e_adjs = c.adj_edges();
+  auto n_adjs = c.adj_nodes();
   for (auto & c_adj : c_adjs)
-    std::cout << c_idx[c_adj.index()] << std::endl;
+    std::cout << "adj cell : " << c_idx[c_adj.index()] << std::endl;
+  for (auto & e_adj : e_adjs)
+    std::cout << "adj edge : " << e_adj.index() << std::endl;
+  for (auto & n_adj : n_adjs)
+    std::cout << "adj node : " << n_idx[n_adj.index()] << std::endl;
 
   std::cout << n_idx[n.index()] << std::endl;
+  auto n_adjs2 = n.adj_nodes();
+  auto e_adjs2 = n.adj_edges();
+  auto c_adjs2 = n.adj_cells();
+  for (auto & n_adj : n_adjs2)
+    std::cout << "adj node : " << n_idx[n_adj.index()] << std::endl;
+  for (auto & e_adj : e_adjs2)
+    std::cout << "adj edge : " << e_adj.index() << std::endl;
+  for (auto & c_adj : c_adjs2)
+    std::cout << "adj cell : " << c_idx[c_adj.index()] << std::endl;
+
 
 
   Figure fig0("out0", mesh.get_box());

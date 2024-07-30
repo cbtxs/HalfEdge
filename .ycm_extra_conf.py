@@ -41,7 +41,7 @@ flags = [
     '-Wall',
     '-Wextra',
     '-Werror',
-    '-std=c++17',
+    '-std=c++20',
     '-isystem',
     '-x', 'c++',
     '-isystem', get_python_inc(),

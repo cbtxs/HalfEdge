@@ -175,13 +175,14 @@ public:
   template<typename H, typename N>
   class AdjNodeIterator : public AdjEntityIteratorBase<AdjNodeIterator<H, N>, H, N>
   {
+  public:
     N & entity_imp(H * h) const { return *(h->previous()->node()); }
     H * next_imp(H * h) 
     { 
-      if(h->node() != start_->node())
+      if(h->node() != this->start_->node())
         return nullptr;
       h = h->next_oppo();
-      if (h == start_) 
+      if (h == this->start_) 
         return nullptr;
       else if (h->is_boundary())
         return h->next();
@@ -193,13 +194,14 @@ public:
   template<typename H, typename E>
   class AdjEdgeIterator : public AdjEntityIteratorBase<AdjEdgeIterator<H, E>, H, E>
   {
+  public:
     E & entity_imp(H * h) const { return *(h->edge()); }
     H * next_imp(H * h) 
     { 
-      if(h->node() != start_->node())
+      if(h->node() != this->start_->node())
         return nullptr;
       h = h->next_oppo();
-      if (h == start_) 
+      if (h == this->start_) 
         return nullptr;
       else
         return h;
@@ -209,11 +211,12 @@ public:
   template<typename H, typename C>
   class AdjCellIterator : public AdjEntityIteratorBase<AdjCellIterator<H, C>, H, C>
   {
+  public:
     C & entity_imp(H * h) const { return *(h->cell()); }
     H * next_imp(H * h) 
     { 
       h = h->next_oppo(); 
-      if (h == start_ || h->is_boundary()) 
+      if (h == this->start_ || h->is_boundary()) 
         return nullptr;
       else
         return h;
@@ -389,7 +392,7 @@ public:
       if (h == this->start_) 
         return nullptr;
       else
-        return h->next(); 
+        return h;
     }
   };
 
@@ -404,7 +407,7 @@ public:
       if (h == this->start_) 
         return nullptr;
       else
-        return h->next(); 
+        return h;
     }
   };
 
@@ -419,7 +422,7 @@ public:
       if (h == this->start_) 
         return nullptr;
       else
-        return h->next(); 
+        return h;
     }
   };
 
@@ -489,13 +492,13 @@ public:
     return &(adj_node(i)->coordinate());
   }
 
-  AdjNodeView adj_nodes() { return AdjNodeView(start_); }
+  AdjNodeView adj_nodes() { return AdjNodeView(start_->previous()); }
 
   AdjEdgeView adj_edges() { return AdjEdgeView(start_); }
 
   AdjCellView adj_cells() { return AdjCellView(start_); }
 
-  ConstAdjNodeView adj_nodes() const { return ConstAdjNodeView(start_); }
+  ConstAdjNodeView adj_nodes() const { return ConstAdjNodeView(start_->previous()); }
 
   ConstAdjEdgeView adj_edges() const { return ConstAdjEdgeView(start_); }
 
