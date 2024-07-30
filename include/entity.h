@@ -175,28 +175,49 @@ public:
   template<typename H, typename N>
   class AdjNodeIterator : public AdjEntityIteratorBase<AdjNodeIterator<H, N>, H, N>
   {
-    N * entity_imp(H * h) const { return h->previous()->node(); }
+    N & entity_imp(H * h) const { return *(h->previous()->node()); }
     H * next_imp(H * h) 
     { 
-      h = h->next_oppo();
-      if (h->is_boundary() || next==start_) 
+      if(h->node() != start_->node())
         return nullptr;
-      return h->next_oppo(); 
+      h = h->next_oppo();
+      if (h == start_) 
+        return nullptr;
+      else if (h->is_boundary())
+        return h->next();
+      else
+        return h;
     }
   };
 
   template<typename H, typename E>
   class AdjEdgeIterator : public AdjEntityIteratorBase<AdjEdgeIterator<H, E>, H, E>
   {
-    E * entity_imp(H * h) const { return *(h->edge()); }
-    H * next_imp(H * h) { return h->next_oppo(); }
+    E & entity_imp(H * h) const { return *(h->edge()); }
+    H * next_imp(H * h) 
+    { 
+      if(h->node() != start_->node())
+        return nullptr;
+      h = h->next_oppo();
+      if (h == start_) 
+        return nullptr;
+      else
+        return h;
+    }
   };
 
   template<typename H, typename C>
   class AdjCellIterator : public AdjEntityIteratorBase<AdjCellIterator<H, C>, H, C>
   {
-    C * entity_imp(H * h) const { return h->cell(); }
-    H * next_imp(H * h) { return h->next_oppo(); }
+    C & entity_imp(H * h) const { return *(h->cell()); }
+    H * next_imp(H * h) 
+    { 
+      h = h->next_oppo(); 
+      if (h == start_ || h->is_boundary()) 
+        return nullptr;
+      else
+        return h;
+    }
   };
 
   /** 定义邻接实体的视图 */
@@ -252,6 +273,10 @@ public:
   uint32_t adj_node(Node ** n2n);
 
   AdjNodeView adj_nodes() const { return AdjNodeView(start_); }
+
+  AdjEdgeView adj_edges() const { return AdjEdgeView(start_); }
+
+  AdjCellView adj_cells() const { return AdjCellView(start_); }
 
   Node & operator=(const Node & other)
   {
@@ -356,22 +381,46 @@ public:
   template<typename H, typename N>
   class AdjNodeIterator : public AdjEntityIteratorBase<AdjNodeIterator<H, N>, H, N>
   {
-    N * entity_imp(H * h) const { return h->node(); }
-    H * next_imp(H * h) { return h->next(); }
+  public:
+    N & entity_imp(H * h) const { return *(h->node()); }
+    H * next_imp(H * h) 
+    { 
+      h = h->next();
+      if (h == this->start_) 
+        return nullptr;
+      else
+        return h->next(); 
+    }
   };
 
   template<typename H, typename E>
   class AdjEdgeIterator : public AdjEntityIteratorBase<AdjEdgeIterator<H, E>, H, E>
   {
-    E * entity_imp(H * h) const { return h->edge(); }
-    H * next_imp(H * h) { return h->next(); }
+  public:
+    E & entity_imp(H * h) const { return *(h->edge()); }
+    H * next_imp(H * h) 
+    { 
+      h = h->next();
+      if (h == this->start_) 
+        return nullptr;
+      else
+        return h->next(); 
+    }
   };
 
   template<typename H, typename C>
   class AdjCellIterator : public AdjEntityIteratorBase<AdjCellIterator<H, C>, H, C>
   {
-    C * entity_imp(H * h) const { return h->opposite()->cell(); }
-    H * next_imp(H * h) { return h->next(); }
+  public:
+    C & entity_imp(H * h) const { return *(h->opposite()->cell()); }
+    H * next_imp(H * h) 
+    { 
+      h = h->next();
+      if (h == this->start_) 
+        return nullptr;
+      else
+        return h->next(); 
+    }
   };
 
   /** 定义邻接实体的视图 */
@@ -439,6 +488,18 @@ public:
   { 
     return &(adj_node(i)->coordinate());
   }
+
+  AdjNodeView adj_nodes() { return AdjNodeView(start_); }
+
+  AdjEdgeView adj_edges() { return AdjEdgeView(start_); }
+
+  AdjCellView adj_cells() { return AdjCellView(start_); }
+
+  ConstAdjNodeView adj_nodes() const { return ConstAdjNodeView(start_); }
+
+  ConstAdjEdgeView adj_edges() const { return ConstAdjEdgeView(start_); }
+
+  ConstAdjCellView adj_cells() const { return ConstAdjCellView(start_); }
 
   Cell & operator=(const Cell & other)
   {

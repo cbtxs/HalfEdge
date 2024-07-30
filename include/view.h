@@ -9,13 +9,17 @@
  * 1. entity_imp: 返回当前半边对应的实体
  * 2. next_imp : 返回下一个半边, 如果返回nullptr则表示遍历结束
  */
-template<typename Imp, typename HalfEdge, typename Entity>
+template<typename Imp, typename H, typename E>
 class AdjEntityIteratorBase
 {
 public:
+    using HalfEdge = H;
+    using Entity = E;
+
     using iterator_category = std::forward_iterator_tag;
     using value_type = Entity;
     using difference_type = std::ptrdiff_t;
+
 
     AdjEntityIteratorBase(HalfEdge * start__): current_(start__), start_(start__) {}
 
@@ -42,7 +46,7 @@ public:
       //  current_ = nullptr;  // End of iteration
       //}
       current_ = next();
-      return *this;
+      return *(static_cast<Imp*>(this));
     }
 
     bool operator!=(const AdjEntityIteratorBase & other) const 
@@ -50,7 +54,12 @@ public:
       return current_ != other.current_;
     }
 
-private:
+    bool operator==(const AdjEntityIteratorBase & other) const 
+    {
+      return current_ == other.current_;
+    }
+
+protected:
     HalfEdge* current_;
     HalfEdge* start_;
 };
