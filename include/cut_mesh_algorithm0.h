@@ -11,6 +11,8 @@
 #include <stack>
 #include <string>
 #include <unordered_set>
+#include <stdexcept>
+#include <unordered_map>
 
 #include "interface.h"
 
@@ -149,15 +151,13 @@ void CutMeshAlgorithm<Mesh>::find_intersections_of_segment(const InterfacePoint 
   /** 插入一个单元的所有边 */
   auto insert_cell = [&edges, &edge_traversed](Cell * c)
   {
-    Edge * c2e[32];
-    uint32_t N = c->adj_edge(c2e);
-    for(uint32_t i = 0; i < N; i++)
+    auto c2e = c->adj_edges();
+    for(Edge & e : c2e)
     {
-      Edge * e = c2e[i];
-      if(edge_traversed.find(e) == edge_traversed.end())
+      if(edge_traversed.find(&e) == edge_traversed.end())
       {
-        edges.push(e);
-        edge_traversed.insert(e);
+        edges.push(&e);
+        edge_traversed.insert(&e);
       }
     }
   };
@@ -267,26 +267,52 @@ typename Mesh::Cell * CutMeshAlgorithm<Mesh>::_commom_cell_of_two_intersections(
   Node * n0 = h0->node();
   Node * n1 = h1->node();
 
-  bool is_in_same_edge; /**< 两个交点是否在同一条边上 */
+  Point p0 = ip0.point;
+  Point p1 = ip1.point;
 
-  if(ip0.type == 0 && ip1.type == 0) /** 两个点 */
+  uint32_t index = 0;
+  Cell * c;
+  uint8_t flag = mesh_->find_point(p0, c, index);
+  if(flag == 1)/** 在边上 */
   {
+  }
+  else if(flag == 2)/** 在单元内部 */
+  {
+  }
+  else 
+  {
+    std::cout << "ERROR in XXX" << std::endl;
+  }
 
 
 
-  }
-  else if(ip0.type == 0 && ip1.type == 1) /** 一个点一个边 */
-  {
-    is_in_same_edge = e1->has_node(n0);
-  }
-  else if(ip0.type == 1 && ip1.type == 0) /** 一个边一个点 */
-  {
-    is_in_same_edge = e0->has_node(n1);
-  }
-  else if(ip0.type == 1 && ip1.type == 1) /** 两个边 */
-  {
-    is_in_same_edge = (e0 == e1);
-  }
+
+  //bool is_in_same_edge; /**< 两个交点是否在同一条边上 */
+
+  //if(ip0.type == 0 && ip1.type == 0) /** 两个点 */
+  //{
+  //  auto n2n = n0->adj_nodes();
+  //  for(auto n_adj : n2n)
+  //  {
+  //    if(n_adj == n1)
+  //    {
+  //      is_in_same_edge = true;
+  //      break;
+  //    }
+  //  } 
+  //}
+  //else if(ip0.type == 0 && ip1.type == 1) /** 一个点一个边 */
+  //{
+  //  is_in_same_edge = e1->has_node(n0);
+  //}
+  //else if(ip0.type == 1 && ip1.type == 0) /** 一个边一个点 */
+  //{
+  //  is_in_same_edge = e0->has_node(n1);
+  //}
+  //else if(ip0.type == 1 && ip1.type == 1) /** 两个边 */
+  //{
+  //  is_in_same_edge = (e0 == e1);
+  //}
 
 }
 

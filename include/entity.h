@@ -267,13 +267,7 @@ public:
     coordinate_ = p;
   }
 
-  uint32_t get_top(Node ** n2n, Edge ** n2e, Cell ** n2c);
-
   uint32_t adj_cell(Cell ** n2c);
-
-  uint32_t adj_edge(Edge ** n2e);
-
-  uint32_t adj_node(Node ** n2n);
 
   AdjNodeView adj_nodes() const { return AdjNodeView(start_); }
 
@@ -570,24 +564,6 @@ inline double THalfEdge<Traits>::length()
 }
 
 
-/** Node 的一些内联函数 */
-template<typename Traits>
-inline uint32_t TNode<Traits>::get_top(Node ** n2n, Edge ** n2e, Cell ** n2c)
-{
-  uint32_t N = 1;
-  n2n[0] = start_->node();
-  n2e[0] = start_->edge(); 
-  n2c[0] = start_->cell(); 
-  for(HalfEdge * h = start_->next_oppo(); h != start_ && !h->is_boundary(); 
-      h = h->next_oppo())
-  {
-    n2n[N] = h->node();
-    n2e[N] = h->edge(); 
-    n2c[N++] = h->cell(); 
-  }
-  return N;
-}
-
 template<typename Traits>
 inline uint32_t TNode<Traits>::adj_cell(Cell ** n2c)
 {
@@ -610,7 +586,7 @@ inline void TEdge<Traits>::get_top(Node ** e2n, Cell ** e2c, uint8_t * e2cidx)
   e2c[0] = start_->cell(); 
   e2c[1] = start_->cell(); 
   e2cidx[0] = start_->distance(start_->cell()->halfedge());
-  e2cidx[0] = start_->opposite()->distance(start_->opposite()->cell()->halfedge());
+  e2cidx[1] = start_->opposite()->distance(start_->opposite()->cell()->halfedge());
 }
 
 template<typename Traits>

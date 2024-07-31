@@ -15,10 +15,19 @@ struct my_view : std::ranges::view_base {
 
 int main() {
     std::vector<int> vec = {1, 2, 3, 4, 5};
-    my_view view(vec);
+    my_view<std::vector<int> > view(vec);
 
     for (int i : view) {
         std::cout << i << " ";
     }
 }
+
+
+
+
+
+
+
+
+
 
