@@ -2,17 +2,11 @@
 #define _CUT_MESH_ALGORITHM_
 
 #include <queue>
-#include <locale>
-#include <utility>
 #include <vector>
 #include <algorithm>
 #include <memory>
 #include <iostream>
-#include <stack>
-#include <string>
 #include <unordered_set>
-#include <stdexcept>
-#include <unordered_map>
 
 #include "interface.h"
 
@@ -247,12 +241,12 @@ void CutMeshAlgorithm<Mesh>::find_intersections_of_interface(const Interface & i
   }
 }
 
-template<typename Mesh>
-void CutMeshAlgorithm<Mesh>::_link_two_intersections(
-    Intersection & a, Intersection & b)
-{  
-
-}
+//template<typename Mesh>
+//void CutMeshAlgorithm<Mesh>::_link_two_intersections(
+//    Intersection & a, Intersection & b)
+//{  
+//
+//}
 
 template<typename Mesh>
 typename Mesh::Cell * CutMeshAlgorithm<Mesh>::_commom_cell_of_two_intersections(
@@ -283,9 +277,6 @@ typename Mesh::Cell * CutMeshAlgorithm<Mesh>::_commom_cell_of_two_intersections(
   {
     std::cout << "ERROR in XXX" << std::endl;
   }
-
-
-
 
   //bool is_in_same_edge; /**< 两个交点是否在同一条边上 */
 
