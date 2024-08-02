@@ -116,6 +116,8 @@ private:
    */
   Cell * _commom_cell_of_two_intersections(Intersection & a, Intersection & b);
 
+  HalfEdge * _find_halfedge_loaction(const Point & p, HalfEdge * h);
+
 private:
   std::shared_ptr<Mesh> mesh_;
 };
@@ -307,11 +309,24 @@ typename Mesh::Cell * CutMeshAlgorithm<Mesh>::_commom_cell_of_two_intersections(
 
 }
 
-
-
+template<typename Mesh>
+typename Mesh::HalfEdge * CutMeshAlgorithm<Mesh>::_find_halfedge_loaction(const
+    Point & p, HalfEdge * h)
+{
+  auto & geometry_utils = mesh_->geometry_utils();
+  while(true)
+  {
+    Point & p0 = h->previous()->node()->cooridinate();
+    Point & p1 = h->node()->cooridinate();
+    if(geometry_utils.point_on_segment(p0, p1, p))
+      return h;
+    h = h->previous();
+  }
+  return nullptr;
 }
 
 
+}
 
 
 

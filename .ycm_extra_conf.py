@@ -1,9 +1,7 @@
 
 from distutils.sysconfig import get_python_inc
 import sys
-import platform
 import os
-import os.path as p
 import subprocess
 
 # 将 YCM 安装路径替换为实际路径

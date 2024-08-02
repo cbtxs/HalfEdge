@@ -1,10 +1,8 @@
 #ifndef GEOMETRY_UTILS2D_H 
 #define GEOMETRY_UTILS2D_H
 
-#include <utility>
 #include <vector>
-#include <iostream>
-#include <algorithm>
+#include <stdint.h>
 
 #include "geometry.h"
 
