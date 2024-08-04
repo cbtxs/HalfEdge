@@ -47,6 +47,8 @@ public:
     Point point;
     HalfEdge * h;
     uint8_t type = 0;
+    HalfEdge * hout; 
+    HalfEdge * hin;
     bool operator==(const Intersection & other)
     {
       return point.x == other.point.x && point.y == other.point.y;
@@ -115,8 +117,6 @@ private:
    * @return: 公共单元
    */
   Cell * _commom_cell_of_two_intersections(Intersection & a, Intersection & b);
-
-  HalfEdge * _find_halfedge_loaction(const Point & p, HalfEdge * h);
 
 private:
   std::shared_ptr<Mesh> mesh_;
@@ -243,12 +243,12 @@ void CutMeshAlgorithm<Mesh>::find_intersections_of_interface(const Interface & i
   }
 }
 
-//template<typename Mesh>
-//void CutMeshAlgorithm<Mesh>::_link_two_intersections(
-//    Intersection & a, Intersection & b)
-//{  
-//
-//}
+template<typename Mesh>
+void CutMeshAlgorithm<Mesh>::_link_two_intersections(
+    Intersection & a, Intersection & b)
+{  
+
+}
 
 template<typename Mesh>
 typename Mesh::Cell * CutMeshAlgorithm<Mesh>::_commom_cell_of_two_intersections(
@@ -307,22 +307,6 @@ typename Mesh::Cell * CutMeshAlgorithm<Mesh>::_commom_cell_of_two_intersections(
   //  is_in_same_edge = (e0 == e1);
   //}
 
-}
-
-template<typename Mesh>
-typename Mesh::HalfEdge * CutMeshAlgorithm<Mesh>::_find_halfedge_loaction(const
-    Point & p, HalfEdge * h)
-{
-  auto & geometry_utils = mesh_->geometry_utils();
-  while(true)
-  {
-    Point & p0 = h->previous()->node()->cooridinate();
-    Point & p1 = h->node()->cooridinate();
-    if(geometry_utils.point_on_segment(p0, p1, p))
-      return h;
-    h = h->previous();
-  }
-  return nullptr;
 }
 
 
