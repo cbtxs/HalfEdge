@@ -2,8 +2,6 @@
 #define _ENTITY_
 
 #include <stdint.h>
-#include <iostream>
-#include "geometry.h"
 #include "view.h"
 
 namespace HEM
@@ -390,6 +388,21 @@ public:
     }
   };
 
+  template<typename H, typename D>
+  class AdjHalfEdgeIterator : public AdjEntityIteratorBase<AdjHalfEdgeIterator<H, D>, H, D>
+  {
+  public:
+    D & entity_imp(H * h) const { return *(h); }
+    H * next_imp(H * h) 
+    { 
+      h = h->next();
+      if (h == this->start_) 
+        return nullptr;
+      else
+        return h;
+    }
+  };
+
   template<typename H, typename E>
   class AdjEdgeIterator : public AdjEntityIteratorBase<AdjEdgeIterator<H, E>, H, E>
   {
@@ -423,6 +436,9 @@ public:
   /** 定义邻接实体的视图 */
   using AdjNodeView = AdjEntityViewBase<AdjNodeIterator<HalfEdge, Node>>;
   using ConstAdjNodeView = AdjEntityViewBase<AdjNodeIterator<const HalfEdge, const Node>>;
+
+  using AdjHalfEdgeView = AdjEntityViewBase<AdjHalfEdgeIterator<HalfEdge, HalfEdge>>;
+  using ConstAdjHalfEdgeView = AdjEntityViewBase<AdjHalfEdgeIterator<const HalfEdge, const HalfEdge>>;
 
   using AdjEdgeView = AdjEntityViewBase<AdjEdgeIterator<HalfEdge, Edge>>;
   using ConstAdjEdgeView = AdjEntityViewBase<AdjEdgeIterator<const HalfEdge, const Edge>>;
@@ -488,11 +504,15 @@ public:
 
   AdjNodeView adj_nodes() { return AdjNodeView(start_->previous()); }
 
+  AdjHalfEdgeView adj_halfedges() { return AdjHalfEdgeView(start_); }
+
   AdjEdgeView adj_edges() { return AdjEdgeView(start_); }
 
   AdjCellView adj_cells() { return AdjCellView(start_); }
 
   ConstAdjNodeView adj_nodes() const { return ConstAdjNodeView(start_->previous()); }
+
+  ConstAdjHalfEdgeView adj_halfedges() const { return ConstAdjHalfEdgeView(start_); }
 
   ConstAdjEdgeView adj_edges() const { return ConstAdjEdgeView(start_); }
 

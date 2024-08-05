@@ -5,8 +5,8 @@
 #include <vector>
 #include <algorithm>
 #include <memory>
-#include <iostream>
 #include <unordered_set>
+#include <assert.h>
 
 #include "interface.h"
 
@@ -104,11 +104,18 @@ public:
 private:
 
   /**
-   * @brief 将两个交点连接起来
+   * @brief 连接两个相邻的交点
    * @param a: 交点 a
    * @param b: 交点 b
    */
-  void _link_two_intersections(Intersection & a, Intersection & b);
+  HalfEdge * _link_two_adjacent_intersections(Intersection & a, Intersection & b);
+
+  /**
+   * @brief 连接两个交点
+   * @param a: 交点 a
+   * @param b: 交点 b
+   */
+  HalfEdge * _link_two_intersections(Intersection & a, Intersection & b, Cell * c=nullptr);
 
   /**
    * @brief 计算两个交点连线所在的单元
@@ -220,8 +227,14 @@ void CutMeshAlgorithm<Mesh>::find_intersections_of_segment(const InterfacePoint 
       });
   auto last = std::unique(intersections.begin(), intersections.end());
   intersections.erase(last, intersections.end());
+
 }
 
+/**
+ * @brieg 计算一个界面和网格的所有交点
+ * @param iface: 界面
+ * @param intersections: 交点列表
+ */
 template<typename Mesh>
 void CutMeshAlgorithm<Mesh>::find_intersections_of_interface(const Interface & iface, 
   std::vector<std::vector<Intersection> > & intersections)
@@ -239,79 +252,93 @@ void CutMeshAlgorithm<Mesh>::find_intersections_of_interface(const Interface & i
     auto & p0 = ipoints[i0].point;
     auto & p1 = ipoints[i1].point;
 
+    /** 找到 segment[i] 与网格的交点 */
     find_intersections_of_segment(ipoints[i0], ipoints[i1], intersections[i]);
+    /** 边上的点加密 */
+    for(auto & ip : intersections)
+    {
+      if(ip.type == 1)
+      {
+        mesh_->splite_halfedge(ip.h, ip.point);
+        ip.h = ip.h->previous();
+        ip.type = 0;
+      }
+    }
+  }
+  /** 连接每个 segment 的交点*/
+  for(uint32_t i = 0; i < N; i++)
+  {
+    auto & ips = intersections[i];
+    uint32_t N = ips.size();
+    for(uint32_t i = 0; i < N-1; i++)
+    {
+      _link_two_intersections(ips[i], ips[i+1]);
+    }
   }
 }
 
+/**
+ * @brief 连接交点 a 和点 b，要求 a 和 b 都在顶点上, 而且是相邻的
+ *        1. 判断两个点是否在同一条边上
+ *        2. 如果在同一条边上，可以跳过
+ *        3. 如果不在同一条边上，找到两个点的公共单元
+ *        4. 在公共单元中连接两个点
+ * @param a: 交点 a
+ * @param b: 交点 b
+ * @return: a 指向 b 的半边
+ */
 template<typename Mesh>
-void CutMeshAlgorithm<Mesh>::_link_two_intersections(
+Mesh::HalfEdge * CutMeshAlgorithm<Mesh>::_link_two_adjacent_intersections(
     Intersection & a, Intersection & b)
 {  
+  assert(a.type == 0 && b.type == 0);
 
+  /** 判断两个点是否在同一条边上 */
+  Node * n0 = a.h->node();
+  Node * n1 = b.h->node();
+  auto n2e  = n0->adj_edges();
+  for(auto e_adj : n2e)
+  {
+    /** 两个交点在同一条边上 */
+    if(e_adj.has_node(n1))
+    {
+      HalfEdge * h = e_adj->halfedge();
+      if(h->node() == n1)
+        return h;
+      else
+        return h->opposite();
+    }
+  } 
+  /** 两个交点不在同一条边上 */
+  return _link_two_intersections(a, b);
 }
 
+/**
+ * @brief 连接两个交点 a 和 b，要求 a 和 b 都在顶点上
+ */
 template<typename Mesh>
-typename Mesh::Cell * CutMeshAlgorithm<Mesh>::_commom_cell_of_two_intersections(
-    Intersection & ip0, Intersection & ip1)
+Mesh::HalfEdge * CutMeshAlgorithm<Mesh>::_link_two_intersections(Intersection & a, Intersection & b, Cell * c)
 {
-  HalfEdge * h0 = ip0.h;
-  HalfEdge * h1 = ip1.h;
+  assert(a.type == 0 && b.type == 0);
 
-  Edge * e0 = h0->edge();
-  Edge * e1 = h1->edge();
+  if(c==nullptr)
+    c = mesh_->find_point((a.point+b.point)/2);
 
-  Node * n0 = h0->node();
-  Node * n1 = h1->node();
-
-  Point p0 = ip0.point;
-  Point p1 = ip1.point;
-
-  uint32_t index = 0;
-  Cell * c;
-  uint8_t flag = mesh_->find_point(p0, c, index);
-  if(flag == 1)/** 在边上 */
+  Node * n0 = a.h->node();
+  Node * n1 = b.h->node();
+  HalfEdge * out, in = nullptr;
+  for(auto h : c->adj_halfedges())
   {
+    if(h->node() == n0)
+      out = h;
+    if(h->node() == n1)
+      in = h;
   }
-  else if(flag == 2)/** 在单元内部 */
-  {
-  }
-  else 
-  {
-    std::cout << "ERROR in XXX" << std::endl;
-  }
-
-  //bool is_in_same_edge; /**< 两个交点是否在同一条边上 */
-
-  //if(ip0.type == 0 && ip1.type == 0) /** 两个点 */
-  //{
-  //  auto n2n = n0->adj_nodes();
-  //  for(auto n_adj : n2n)
-  //  {
-  //    if(n_adj == n1)
-  //    {
-  //      is_in_same_edge = true;
-  //      break;
-  //    }
-  //  } 
-  //}
-  //else if(ip0.type == 0 && ip1.type == 1) /** 一个点一个边 */
-  //{
-  //  is_in_same_edge = e1->has_node(n0);
-  //}
-  //else if(ip0.type == 1 && ip1.type == 0) /** 一个边一个点 */
-  //{
-  //  is_in_same_edge = e0->has_node(n1);
-  //}
-  //else if(ip0.type == 1 && ip1.type == 1) /** 两个边 */
-  //{
-  //  is_in_same_edge = (e0 == e1);
-  //}
-
+  mesh_->splite_cell(c, out, in);
+  return out->next();
 }
 
-
 }
-
 
 
 

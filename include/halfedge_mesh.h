@@ -7,10 +7,8 @@
 #define _HalfEdge_MESH_BASE_
 
 #include <functional>
-#include <map>
 #include <memory>
 
-#include "geometry.h"
 #include "geometry_utils.h"
 #include "data_container.h"
 
