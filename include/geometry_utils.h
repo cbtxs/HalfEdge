@@ -244,6 +244,15 @@ public:
     return 4; /**< not intersecting */
   }
 
+  uint8_t relative_position_of_two_segments(const Point2d& p0, 
+                                                  const Point2d& p1, 
+                                                  const Point2d& q0, 
+                                                  const Point2d& q1) const
+  {
+    Point2d p;
+    return relative_position_of_two_segments(p0, p1, q0, q1, p);
+  }
+
 private:
   double tol_;
 

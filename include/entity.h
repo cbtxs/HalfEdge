@@ -327,7 +327,7 @@ public:
 
   uint32_t adj_node(Node ** n2n);
 
-  void vertices(Point ** vertices);
+  void vertices(Point ** vertices) const;
 
   bool has_node(Node * n) const
   {
@@ -476,7 +476,7 @@ public:
   uint32_t adj_cell(Cell ** cell2cell);
 
   /** 获取单元的顶点 */
-  uint32_t vertices(Point ** vertices);
+  uint32_t vertices(Point ** vertices) const ;
 
   /** 单元第 i 个邻接边 */
   Edge * adj_edge(uint32_t i) const 
@@ -626,7 +626,7 @@ inline uint32_t TEdge<Traits>::adj_node(Node ** e2n)
 }
 
 template<typename Traits>
-inline void TEdge<Traits>::vertices(Point ** vertices)
+inline void TEdge<Traits>::vertices(Point ** vertices) const
 {
   vertices[0] = &start_->previous()->node()->coordinate();
   vertices[1] = &start_->node()->coordinate();
@@ -705,7 +705,7 @@ uint32_t TCell<Traits>::adj_cell(Cell ** c2c)
 }
 
 template <typename Traits>
-uint32_t TCell<Traits>::vertices(Point ** vertices)
+uint32_t TCell<Traits>::vertices(Point ** vertices) const
 {
   uint32_t N = 0;
   vertices[N++] = &start_->previous()->node()->coordinate();

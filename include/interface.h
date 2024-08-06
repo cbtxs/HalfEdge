@@ -3,7 +3,6 @@
 
 #include <vector>
 #include <memory>
-#include <numeric>
 
 /**
  * @brief 表示一个二维界面, 这个界面由一些点组成，这些点可能在边上，
@@ -41,7 +40,6 @@ public: /** 类型定义 */
 
 private: /** 属性 */
   std::vector<InterfacePoint> points_;
-  std::vector<uint32_t> segments_;
   std::shared_ptr<Mesh> mesh_;
   bool is_loop_;
 
@@ -63,10 +61,6 @@ public: /** 方法 */
       point_to_interface_point(points[i], ip);
       points_.push_back(ip);
     }
-    segments_.resize(N);
-    std::iota(segments_.begin(), segments_.end(), 0);
-    if (is_loop_)
-      segments_.push_back(0);
   }
 
   std::vector<InterfacePoint> & points()
@@ -77,16 +71,6 @@ public: /** 方法 */
   const std::vector<InterfacePoint> & points() const
   {
     return points_;
-  }
-
-  std::vector<uint32_t> & segments()
-  {
-    return segments_;
-  }
-
-  const std::vector<uint32_t> & segments() const
-  {
-    return segments_;
   }
 
   /**

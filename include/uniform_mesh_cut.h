@@ -78,7 +78,7 @@ public:
    * @retval 2 点在单元内部
    * @retval 3 点在网格外面
    */
-  uint32_t find_point(Point & p, Cell* & out, uint32_t & index) const 
+  uint32_t find_point(const Point & p, Cell* & out, uint32_t & index) const 
   {
     uint32_t idx = Base::find_point(p);
     auto cellc = subcell_.get_row(idx);
@@ -98,6 +98,15 @@ public:
       }
     }
     return 3;
+  }
+
+  /**
+   * @brief 查找点所在的单元, 不需要返回 index
+   */
+  uint32_t find_point(const Point & p, Cell* & out) const
+  {
+      uint32_t dummy_index; /**< 定义一个临时的 index 变量 */
+      return find_point(p, out, dummy_index);
   }
 
 private:

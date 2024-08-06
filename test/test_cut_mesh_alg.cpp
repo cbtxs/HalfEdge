@@ -1,15 +1,9 @@
 
 #include "figure.h"
-#include "geometry.h"
-#include "entity.h"
-#include "uniform_mesh.h"
 #include "uniform_mesh_cut.h"
 #include "cut_mesh_algorithm0.h"
 #include <cmath>
-#include <fstream>
-#include <sstream>
 #include <iostream>
-#include <numeric>
 
 
 using namespace HEM;
@@ -41,18 +35,19 @@ int test111()
   CutMeshAlg cutalg(meshptr);
 
   std::vector<Point> points;
-  points.push_back({0.0, 0.0});
-  points.push_back({0.0, 0.4});
+  points.push_back({0.12, 0.13});
+  points.push_back({0.43, 0.41});
+  points.push_back({0.97, 0.52});
+  points.push_back({0.82, 0.57});
+  points.push_back({0.62, 0.78});
 
-  std::vector<bool> is_fixed_points(2, false);
-  Interface interface(points, is_fixed_points, meshptr, false);
 
-  std::vector<std::vector<Intersection> > intersections;
-  cutalg.find_intersections_of_interface(interface, intersections);
-  for (auto & inter : intersections[0])
-  {
-    std::cout << inter.point.x << " " << inter.point.y << " " << inter.type << std::endl; 
-  }
+  std::vector<bool> is_fixed_points(5, false);
+  Interface interface(points, is_fixed_points, meshptr, true);
+
+  cutalg.cut_by_loop_interface(interface);
+
+  std::cout << " draw mesh ..." << std::endl;
 
   Figure fig0("out0", mesh.get_box());
   fig0.draw_mesh(mesh, true);
@@ -62,7 +57,7 @@ int test111()
   return 0;
 }
 
-int main(int, char ** argv)
+int main(int, char ** argv[[maybe_unused]])
 {
   //int NNN = std::stoi(argv[1]);
   //int test_time = std::stoi(argv[2]);

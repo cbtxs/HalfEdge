@@ -1,6 +1,8 @@
 #ifndef _CUT_MESH_ALGORITHM_
 #define _CUT_MESH_ALGORITHM_
 
+#include <array>
+#include <deque>
 #include <queue>
 #include <vector>
 #include <algorithm>
@@ -47,8 +49,6 @@ public:
     Point point;
     HalfEdge * h;
     uint8_t type = 0;
-    HalfEdge * hout; 
-    HalfEdge * hin;
     bool operator==(const Intersection & other)
     {
       return point.x == other.point.x && point.y == other.point.y;
@@ -90,25 +90,25 @@ public:
    * @param p1: 终点
    * @param intersections: 交点列表
    */
-  void find_intersections_of_segment(const InterfacePoint & ip0, const InterfacePoint & ip1, 
-      std::vector<Intersection> & intersections);
-
-  /**
-   * @brief 计算一个 interface 和网格的所有交点
-   * @param iface: 界面
-   * @param intersections: 交点列表
-   */
-  void find_intersections_of_interface(const Interface & iface, 
-      std::vector<std::vector<Intersection> > & intersections);
+  void find_intersections_of_segment(const InterfacePoint & ip0, 
+      const InterfacePoint & ip1, std::vector<Intersection> & intersections);
 
 private:
 
   /**
-   * @brief 连接两个相邻的交点
+   * @brief 找到同一个单元的界面角点
+   * @param iface: 界面
+   * @param corners: 返回角点列表
+   */
+  std::deque<std::array<uint32_t, 3> > _find_corners_of_same_cell(
+      Interface & iface);
+
+  /**
+   * @brief 连接两个相同的 segment 上的交点
    * @param a: 交点 a
    * @param b: 交点 b
    */
-  HalfEdge * _link_two_adjacent_intersections(Intersection & a, Intersection & b);
+  HalfEdge * _link_two_intersections_in_same_segment(Intersection & a, Intersection & b);
 
   /**
    * @brief 连接两个交点
@@ -116,14 +116,6 @@ private:
    * @param b: 交点 b
    */
   HalfEdge * _link_two_intersections(Intersection & a, Intersection & b, Cell * c=nullptr);
-
-  /**
-   * @brief 计算两个交点连线所在的单元
-   * @param a: 交点 a
-   * @param b: 交点 b
-   * @return: 公共单元
-   */
-  Cell * _commom_cell_of_two_intersections(Intersection & a, Intersection & b);
 
 private:
   std::shared_ptr<Mesh> mesh_;
@@ -171,10 +163,10 @@ void CutMeshAlgorithm<Mesh>::find_intersections_of_segment(const InterfacePoint 
   for(auto & c : ip1.cells)
     insert_cell(c);
 
-  if (ip0.type != 3)
+  if (ip0.type != 2)
     intersections.push_back(Intersection(p0, ip0.h, ip0.type));
 
-  if (ip1.type != 3)
+  if (ip1.type != 2)
     intersections.push_back(Intersection(p1, ip1.h, ip1.type));
 
   Cell  * c[2];
@@ -227,54 +219,6 @@ void CutMeshAlgorithm<Mesh>::find_intersections_of_segment(const InterfacePoint 
       });
   auto last = std::unique(intersections.begin(), intersections.end());
   intersections.erase(last, intersections.end());
-
-}
-
-/**
- * @brieg 计算一个界面和网格的所有交点
- * @param iface: 界面
- * @param intersections: 交点列表
- */
-template<typename Mesh>
-void CutMeshAlgorithm<Mesh>::find_intersections_of_interface(const Interface & iface, 
-  std::vector<std::vector<Intersection> > & intersections)
-{
-  auto & ipoints  = iface.points();
-  auto & segments = iface.segments();
-
-  uint32_t N = segments.size()-1;
-  intersections.resize(N);
-
-  for(uint32_t i = 0; i < N; i++)
-  {
-    uint32_t i0 = segments[i];
-    uint32_t i1 = segments[i+1];
-    auto & p0 = ipoints[i0].point;
-    auto & p1 = ipoints[i1].point;
-
-    /** 找到 segment[i] 与网格的交点 */
-    find_intersections_of_segment(ipoints[i0], ipoints[i1], intersections[i]);
-    /** 边上的点加密 */
-    for(auto & ip : intersections)
-    {
-      if(ip.type == 1)
-      {
-        mesh_->splite_halfedge(ip.h, ip.point);
-        ip.h = ip.h->previous();
-        ip.type = 0;
-      }
-    }
-  }
-  /** 连接每个 segment 的交点*/
-  for(uint32_t i = 0; i < N; i++)
-  {
-    auto & ips = intersections[i];
-    uint32_t N = ips.size();
-    for(uint32_t i = 0; i < N-1; i++)
-    {
-      _link_two_intersections(ips[i], ips[i+1]);
-    }
-  }
 }
 
 /**
@@ -288,7 +232,7 @@ void CutMeshAlgorithm<Mesh>::find_intersections_of_interface(const Interface & i
  * @return: a 指向 b 的半边
  */
 template<typename Mesh>
-Mesh::HalfEdge * CutMeshAlgorithm<Mesh>::_link_two_adjacent_intersections(
+Mesh::HalfEdge * CutMeshAlgorithm<Mesh>::_link_two_intersections_in_same_segment(
     Intersection & a, Intersection & b)
 {  
   assert(a.type == 0 && b.type == 0);
@@ -297,12 +241,12 @@ Mesh::HalfEdge * CutMeshAlgorithm<Mesh>::_link_two_adjacent_intersections(
   Node * n0 = a.h->node();
   Node * n1 = b.h->node();
   auto n2e  = n0->adj_edges();
-  for(auto e_adj : n2e)
+  for(auto & e_adj : n2e)
   {
     /** 两个交点在同一条边上 */
     if(e_adj.has_node(n1))
     {
-      HalfEdge * h = e_adj->halfedge();
+      HalfEdge * h = e_adj.halfedge();
       if(h->node() == n1)
         return h;
       else
@@ -322,21 +266,207 @@ Mesh::HalfEdge * CutMeshAlgorithm<Mesh>::_link_two_intersections(Intersection & 
   assert(a.type == 0 && b.type == 0);
 
   if(c==nullptr)
-    c = mesh_->find_point((a.point+b.point)/2);
+    mesh_->find_point((a.point+b.point)/2, c);
 
   Node * n0 = a.h->node();
   Node * n1 = b.h->node();
-  HalfEdge * out, in = nullptr;
-  for(auto h : c->adj_halfedges())
+  HalfEdge * out = nullptr;
+  HalfEdge * in  = nullptr;
+  for(auto & h : c->adj_halfedges())
   {
-    if(h->node() == n0)
-      out = h;
-    if(h->node() == n1)
-      in = h;
+    if(h.node() == n0)
+      out = &h;
+    if(h.node() == n1)
+      in = &h;
   }
   mesh_->splite_cell(c, out, in);
   return out->next();
 }
+
+/**
+ * @brief 找到同一个单元的界面角点
+ * @param iface: 界面
+ * @return: 返回角点列表
+ *          每个元素是一个数组，
+ *          第一个元素是角点的起始点编号，
+ *          第二个元素是角点的终点编号,
+ *          第三个元素是角点是否是固定点
+ */
+template<typename Mesh>
+std::deque<std::array<uint32_t, 3> > CutMeshAlgorithm<Mesh>::_find_corners_of_same_cell(
+    Interface & iface)
+{
+  auto & ipoints  = iface.points();
+
+  uint32_t NP = ipoints.size(); /** 界面的点数 */
+  std::deque<std::array<uint32_t, 3> > corners; 
+
+  Cell * c = nullptr;
+  std::array<uint32_t, 3> corn{0, 0, 0};
+  for(uint32_t i = 0; i < NP; i++)
+  {
+    const auto & ip0 = ipoints[i];
+    if(ip0.type == 2)
+    {
+      if (c != ip0.cells[0])
+      {
+        if (c != nullptr)
+        {
+          corners.push_back(corn);
+          corn = {0, 0, 0};
+        }
+        c = ip0.cells[0];
+        corn = {i, i, ip0.is_fixed_point};
+      }
+      else if(c == ip0.cells[0])
+      {
+        corn[1] = i;
+        corn[2] = ip0.is_fixed_point || corn[2];
+      }
+    }
+  }
+  corners.push_back(corn);
+
+  if(iface.is_loop_interface() && ipoints[0].type==2 && ipoints.back().type==2
+    && ipoints[0].cells[0] == ipoints.back().cells[0])
+  {
+    corners.front()[0] = corners.back()[0]; 
+    corners.front()[2] = corners.back()[2] || corners.front()[2];
+    corners.pop_back();
+  }
+  else if(!iface.is_loop_interface() && ipoints[0].type==2)
+  {
+    corners.pop_front();
+  }
+  else if(!iface.is_loop_interface() && ipoints.back().type==2)
+  {
+    corners.pop_back();
+  }
+  return corners;
+}
+
+
+/**
+ * @brieg 计算一个界面和网格的所有交点
+ * @param iface: 界面
+ * @param intersections: 交点列表
+ */
+template<typename Mesh>
+void CutMeshAlgorithm<Mesh>::cut_by_loop_interface(Interface & iface)
+{
+  const auto & geometry_utils = mesh_->geometry_utils();
+
+  std::vector<std::vector<Intersection> > intersections;
+  auto & ipoints  = iface.points();
+
+  uint32_t NP = ipoints.size(); /** 界面的点数 */
+  uint32_t NS = NP + iface.is_loop_interface(); /** 界面的 segment 数 */
+  intersections.resize(NS);
+
+  /** 0. 找到同一个单元的界面角点 */
+  auto corners = _find_corners_of_same_cell(iface);
+
+  /** 1. 计算每个 segment 和网格的交点 */
+  for(uint32_t i = 0; i < NS; i++)
+  {
+    uint32_t i0 = i; 
+    uint32_t i1 = (i+1)%NP; 
+    auto & ip0 = ipoints[i0];
+    auto & ip1 = ipoints[i1];
+
+    /** 1.1 找到 segment[i] 与网格的交点 */
+    find_intersections_of_segment(ip0, ip1, intersections[i]);
+
+    /** 1.2 边上的点加密 */
+    for(auto & ins : intersections[i])
+    {
+      if(ins.type == 1)
+      {
+        mesh_->splite_halfedge(ins.h, ins.point);
+        ins.h = ins.h->previous();
+        ins.type = 0;
+      }
+    }
+
+    /** 1.3 如果 ip0, ip1 在边上，那么它们的状态会因为 1.2 而改变*/
+    if(ip0.type == 1)
+    {
+      ip0.h = intersections[i].front().h;
+      ip0.type = 0;
+    }
+    if(ip1.type == 1)
+    {
+      ip1.h = intersections[i].back().h;
+      ip1.type = 0;
+    }
+  }
+
+  /** 2. 处理转折点 */
+  for(auto & corn : corners)
+  {
+    auto & start = corn[0];
+    auto & end   = corn[1];
+    auto & fixed = corn[2];
+    auto ins0 = intersections[(NP+start-1)%NP].back();
+    auto ins1 = intersections[end].front();
+    Cell * c = ipoints[start].cells[0];
+    if(fixed) /** 固定转折点的情况 */
+    {
+      HalfEdge * h = _link_two_intersections(ins0, ins1, c);
+      for(int i = start; i != end; i = (i+1)%NP) //TODO
+      {
+        mesh_->splite_halfedge(h, ipoints[i].point);
+      }
+    }
+    else
+    {
+      uint8_t count = 0;
+      Point * ep[2];
+      auto c2e = c->adj_edges();
+      for(const auto & e : c2e)
+      {
+        e.vertices(ep);
+        uint8_t flag = geometry_utils.relative_position_of_two_segments(
+            ins0.point, ins1.point, *(ep[0]), *(ep[1]));
+        if(flag==1)
+        {
+          count = 3;
+          break;
+        }
+        else if (flag != 4)
+        {
+          count++;
+        }
+      }
+      assert (count >=2);
+      HalfEdge * h = _link_two_intersections(ins0, ins1, c);
+      if(count>2)
+      {
+        Point p(0, 0);
+        count = 0;
+        for(uint32_t i = start; i != end; i = (i+1)%NP)
+        {
+          count++;
+          p += ipoints[i].point;
+        }
+        p = p/count;
+        mesh_->splite_halfedge(h, p);
+      }
+    }
+  }
+
+  /** 3. 连接每个 segment 的交点*/
+  for(uint32_t i = 0; i < NS; i++)
+  {
+    auto & ips = intersections[i];
+    uint32_t Ni = ips.size();
+    for(uint32_t i = 0; i < Ni-1; i++)
+      _link_two_intersections_in_same_segment(ips[i], ips[i+1]);
+  }
+}
+
+
+
 
 }
 
