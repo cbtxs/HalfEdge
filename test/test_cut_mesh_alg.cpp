@@ -53,6 +53,10 @@ int test111()
   fig0.draw_mesh(mesh, true);
   fig0.draw_halfedge(mesh, true);
   fig0.draw_node(mesh, true);
+  //for(uint32_t i = 0; i < points.size(); i++)
+  //{
+  //  fig0.draw_line(points[i], points[(i+1)%points.size()], 0.002);
+  //}
 
   return 0;
 }

@@ -3,7 +3,6 @@
 
 #include <algorithm>
 #include <cairomm/cairomm.h>
-#include <iostream>
 #include <functional>
 
 class Figure
@@ -80,9 +79,19 @@ public:
   template<typename Mesh>
   void draw_edge(Mesh & m, bool showindex = false);
 
+  template<typename Point>
+  void draw_line(const Point & p0, const Point & p1, double width = 0.002)
+  {
+    cr_->set_line_width(width);
+    cr_->move_to(p0.x, p0.y);
+    cr_->line_to(p1.x, p1.y);
+    cr_->stroke();
+  }
+
 private:
+  template<typename AColor>
   void _show_label(double x, double y, std::string label, double ax,  double ay, 
-      double size, std::array<double, 4> pcolor, std::array<double, 4> textcolor);
+      double size, AColor & pcolor, std::array<double, 4> textcolor);
 
 private:
   Cairo::RefPtr<Cairo::SvgSurface> surface_;
@@ -90,8 +99,9 @@ private:
   double scal_;
 };
 
-void Figure::_show_label(double x, double y, std::string label, double ax,  double ay, double size, 
-    std::array<double, 4> pcolor, std::array<double, 4> textcolor)
+template<typename AColor>
+void Figure::_show_label(double x, double y, std::string label, double ax,  double ay, 
+    double size, AColor & pcolor, std::array<double, 4> textcolor)
 {
   cr_->set_source_rgba(pcolor[0], pcolor[1], pcolor[2], pcolor[3]);  /**< RGBA */
 

@@ -1,7 +1,6 @@
 #ifndef _UNIFORM_MESH_
 #define _UNIFORM_MESH_
 
-#include <algorithm>
 #include "halfedge_mesh.h"
 #include "halfedge_mesh_traits.h"
 

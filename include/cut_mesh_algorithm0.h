@@ -49,6 +49,8 @@ public:
     Point point;
     HalfEdge * h;
     uint8_t type = 0;
+    HalfEdge * out;
+    HalfEdge * in;
     bool operator==(const Intersection & other)
     {
       return point.x == other.point.x && point.y == other.point.y;
@@ -102,6 +104,8 @@ private:
    */
   std::deque<std::array<uint32_t, 3> > _find_corners_of_same_cell(
       Interface & iface);
+
+  void _find_out_and_in_halfedge(Intersection & a, Intersection & b, Cell * c = nullptr);
 
   /**
    * @brief 连接两个相同的 segment 上的交点
@@ -345,6 +349,47 @@ std::deque<std::array<uint32_t, 3> > CutMeshAlgorithm<Mesh>::_find_corners_of_sa
   return corners;
 }
 
+template<typename Mesh>
+void CutMeshAlgorithm<Mesh>::_find_out_and_in_halfedge(Intersection & a, Intersection & b, Cell * c)
+{
+  assert(a.type == 0 && b.type == 0);
+
+  /** 判断两个点是否在同一条边上 */
+  Node * n0 = a.h->node();
+  Node * n1 = b.h->node();
+  auto n2e  = n0->adj_edges();
+
+  bool is_in_same_edge = false;
+  for(auto & e_adj : n2e)
+  {
+    /** 两个交点在同一条边上 */
+    if(e_adj.has_node(n1))
+    {
+      HalfEdge * h = e_adj.halfedge();
+      if(h->node() == n1)
+        b.in = h;
+      else
+        b.in = h->opposite();
+      a.out = nullptr;
+      is_in_same_edge = true;
+    }
+  } 
+
+  /** 两个交点不在同一条边上 */
+  if(!is_in_same_edge)
+  {
+    if(c==nullptr)
+      mesh_->find_point((a.point+b.point)/2, c);
+    for(auto & h : c->adj_halfedges())
+    {
+      if(h.node() == n0)
+        a.out = &h;
+      if(h.node() == n1)
+        b.in = &h;
+    }
+  }
+}
+
 
 /**
  * @brieg 计算一个界面和网格的所有交点
@@ -360,7 +405,7 @@ void CutMeshAlgorithm<Mesh>::cut_by_loop_interface(Interface & iface)
   auto & ipoints  = iface.points();
 
   uint32_t NP = ipoints.size(); /** 界面的点数 */
-  uint32_t NS = NP + iface.is_loop_interface(); /** 界面的 segment 数 */
+  uint32_t NS = NP - 1 + iface.is_loop_interface(); /** 界面的 segment 数 */
   intersections.resize(NS);
 
   /** 0. 找到同一个单元的界面角点 */
@@ -401,7 +446,61 @@ void CutMeshAlgorithm<Mesh>::cut_by_loop_interface(Interface & iface)
     }
   }
 
-  /** 2. 处理转折点 */
+  /** 2. 处理转折点 out in */
+  uint32_t NC = corners.size();
+  std::vector<bool> need_insert_point(NC, false);
+  for(auto & corn : corners)
+  {
+    auto & start = corn[0];
+    auto & end   = corn[1];
+    auto & fixed = corn[2];
+    auto ins0 = intersections[(NP+start-1)%NP].back();
+    auto ins1 = intersections[end].front();
+    Cell * c = ipoints[start].cells[0];
+    if(fixed) /** 固定转折点的情况 */
+    {
+      _find_out_and_in_halfedge(ins0, ins1, c);
+    }
+    else     
+    /** 不是固定转折点的情况, 这种情况下要判断 ins0 和 ins1 要不要连接 
+     *  1. 如果 ins0 和 ins1 组成的线段与 c 的边相交多于 4 次，那么 ins0 和 ins1 要连接，而且要插入一个点
+     *
+     * */
+    {
+      uint8_t count = 0;
+      Point * ep[2];
+      auto c2e = c->adj_edges();
+      for(const auto & e : c2e)
+      {
+        e.vertices(ep);
+        uint8_t flag = geometry_utils.relative_position_of_two_segments(
+            ins0.point, ins1.point, *(ep[0]), *(ep[1]));
+        if(flag==0)
+        {
+          count = 5;
+          break;
+        }
+        else if (flag != 4)
+        {
+          count++;
+        }
+      }
+      assert (count >=4);
+      HalfEdge * h = _link_two_intersections(ins0, ins1, c);
+      if(count>4)
+      {
+        Point p(0, 0);
+        count = 0;
+        for(uint32_t i = start; i != (end+1)%NP; i = (i+1)%NP)
+        {
+          count++;
+          p += ipoints[i].point;
+        }
+        p = p/count;
+        mesh_->splite_halfedge(h, p);
+      }
+    }
+  }
   for(auto & corn : corners)
   {
     auto & start = corn[0];
@@ -413,7 +512,7 @@ void CutMeshAlgorithm<Mesh>::cut_by_loop_interface(Interface & iface)
     if(fixed) /** 固定转折点的情况 */
     {
       HalfEdge * h = _link_two_intersections(ins0, ins1, c);
-      for(int i = start; i != end; i = (i+1)%NP) //TODO
+      for(int i = start; i != (end+1)%NP; i = (i+1)%NP) //TODO
       {
         mesh_->splite_halfedge(h, ipoints[i].point);
       }
@@ -428,9 +527,9 @@ void CutMeshAlgorithm<Mesh>::cut_by_loop_interface(Interface & iface)
         e.vertices(ep);
         uint8_t flag = geometry_utils.relative_position_of_two_segments(
             ins0.point, ins1.point, *(ep[0]), *(ep[1]));
-        if(flag==1)
+        if(flag==0)
         {
-          count = 3;
+          count = 5;
           break;
         }
         else if (flag != 4)
@@ -438,13 +537,13 @@ void CutMeshAlgorithm<Mesh>::cut_by_loop_interface(Interface & iface)
           count++;
         }
       }
-      assert (count >=2);
+      assert (count >=4);
       HalfEdge * h = _link_two_intersections(ins0, ins1, c);
-      if(count>2)
+      if(count>4)
       {
         Point p(0, 0);
         count = 0;
-        for(uint32_t i = start; i != end; i = (i+1)%NP)
+        for(uint32_t i = start; i != (end+1)%NP; i = (i+1)%NP)
         {
           count++;
           p += ipoints[i].point;
@@ -459,8 +558,8 @@ void CutMeshAlgorithm<Mesh>::cut_by_loop_interface(Interface & iface)
   for(uint32_t i = 0; i < NS; i++)
   {
     auto & ips = intersections[i];
-    uint32_t Ni = ips.size();
-    for(uint32_t i = 0; i < Ni-1; i++)
+    int Ni = ips.size();
+    for(int i = 0; i < Ni-1; i++)
       _link_two_intersections_in_same_segment(ips[i], ips[i+1]);
   }
 }
