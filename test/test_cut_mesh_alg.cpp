@@ -43,6 +43,7 @@ int test111()
 
 
   std::vector<bool> is_fixed_points(5, false);
+  is_fixed_points[0] = true;
   Interface interface(points, is_fixed_points, meshptr, true);
 
   cutalg.cut_by_loop_interface(interface);

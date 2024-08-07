@@ -92,8 +92,8 @@ public:
    * @param p1: 终点
    * @param intersections: 交点列表
    */
-  void find_intersections_of_segment(const InterfacePoint & ip0, 
-      const InterfacePoint & ip1, std::vector<Intersection> & intersections);
+  void find_intersections_of_segment(InterfacePoint & ip0, 
+      InterfacePoint & ip1, std::vector<Intersection> & intersections);
 
 private:
 
@@ -139,9 +139,13 @@ private:
  * @param intersections: 交点列表
  */
 template<typename Mesh>
-void CutMeshAlgorithm<Mesh>::find_intersections_of_segment(const InterfacePoint & ip0, 
-        const InterfacePoint & ip1, std::vector<Intersection> & intersections)
+void CutMeshAlgorithm<Mesh>::find_intersections_of_segment(InterfacePoint & ip0, 
+        InterfacePoint & ip1, std::vector<Intersection> & intersections)
 {
+  /** 如果两个界面点在同一个单元上，直接返回 */
+  if(ip0.type == 2 && ip1.type == 2 && ip0.cells[0] == ip1.cells[0])
+    return;
+
   auto & p0 = ip0.point;
   auto & p1 = ip1.point;
   auto & geometry_utils = mesh_->geometry_utils();
@@ -225,6 +229,29 @@ void CutMeshAlgorithm<Mesh>::find_intersections_of_segment(const InterfacePoint 
       });
   auto last = std::unique(intersections.begin(), intersections.end());
   intersections.erase(last, intersections.end());
+
+  /** 1.2 边上的点加密 */
+  for(auto & ins : intersections)
+  {
+    if(ins.type == 1)
+    {
+      mesh_->splite_halfedge(ins.h, ins.point);
+      ins.h = ins.h->previous();
+      ins.type = 0;
+    }
+  }
+
+  /** 1.3 如果 ip0, ip1 在边上，那么它们的状态会因为 1.2 而改变*/
+  if(ip0.type == 1)
+  {
+    ip0.h = intersections.front().h;
+    ip0.type = 0;
+  }
+  if(ip1.type == 1)
+  {
+    ip1.h = intersections.back().h;
+    ip1.type = 0;
+  }
 }
 
 /**
@@ -394,11 +421,13 @@ void CutMeshAlgorithm<Mesh>::_find_halfedge(Intersection & a, Intersection & b, 
   for(auto & h : c->adj_halfedges())
   {
     if(h.node() == n0)
-      a.h = &h;
+      a.out = &h;
     if(h.node() == n1)
-      b.h = &h;
+      b.in = &h;
   }
 }
+
+
 
 
 /**
@@ -431,32 +460,12 @@ void CutMeshAlgorithm<Mesh>::cut_by_loop_interface(Interface & iface)
 
     /** 1.1 找到 segment[i] 与网格的交点 */
     find_intersections_of_segment(ip0, ip1, intersections[i]);
-
-    /** 1.2 边上的点加密 */
-    for(auto & ins : intersections[i])
-    {
-      if(ins.type == 1)
-      {
-        mesh_->splite_halfedge(ins.h, ins.point);
-        ins.h = ins.h->previous();
-        ins.type = 0;
-      }
-    }
-
-    /** 1.3 如果 ip0, ip1 在边上，那么它们的状态会因为 1.2 而改变*/
-    if(ip0.type == 1)
-    {
-      ip0.h = intersections[i].front().h;
-      ip0.type = 0;
-    }
-    if(ip1.type == 1)
-    {
-      ip1.h = intersections[i].back().h;
-      ip1.type = 0;
-    }
   }
 
-  /** 2. 处理转折点 out in */
+  /** 2. 处理转折点 out in 
+   * 对于有固定点的情况，连接了以后加密连接边
+   * 对于没有固定点的情况，就把他们变成一个 segment
+   */
   uint32_t NC = corners.size();
   std::vector<bool> need_insert_point;
   need_insert_point.reserve(NC);
@@ -465,105 +474,119 @@ void CutMeshAlgorithm<Mesh>::cut_by_loop_interface(Interface & iface)
     auto & start = corn[0];
     auto & end   = corn[1];
     auto & fixed = corn[2];
-    auto ins0 = intersections[(NP+start-1)%NP].back();
-    auto ins1 = intersections[end].front();
+    auto & ins0 = intersections[(NP+start-1)%NP].back();
+    auto & ins1 = intersections[end].front();
     Cell * c = ipoints[start].cells[0];
-    bool need_insert = false;
-    /** ins0 和 ins1 一定要连接的，对于有固定点的情况，连接了以后加密连接边
-     * 对于没有固定点的情况，要判断需不需要插入点*/
     if(fixed) /** 固定转折点的情况 */
     {
-      _find_out_and_in_halfedge(ins0, ins1, c);
+      _find_halfedge(ins0, ins1, c);
     }
-    else /** 不是固定转折点的情况, 这种情况下要判断 ins0 和 ins1 要不要连接 
-     *  1. 如果 ins0 和 ins1 组成的线段与 c 的边相交多于 4 次，那么 ins0 和 ins1 要连接，而且要插入一个点
-     *  2. 
-     *
-     * */
+    else     
     {
-      uint8_t count = 0;
-      Point * ep[2];
-      auto c2e = c->adj_edges();
-      for(const auto & e : c2e)
-      {
-        e.vertices(ep);
-        uint8_t flag = geometry_utils.relative_position_of_two_segments(
-            ins0.point, ins1.point, *(ep[0]), *(ep[1]));
-        if(flag==0)
-        {
-          count = 5;
-          break;
-        }
-        else if (flag != 4)
-        {
-          count++;
-        }
-      }
-      assert (count >=4);
-      HalfEdge * h = _find_halfedge(ins0, ins1, c);
-      need_insert = count>4;
+      intersections.push_back({});
+
+      std::vector<Cell * > c0 = {c};
+      std::vector<Cell * > c1 = {c};
+      InterfacePoint ip0(ins0.point, false, c0, ins0.h, 0);
+      InterfacePoint ip1(ins1.point, false, c1, ins1.h, 0);
+
+      find_intersections_of_segment(ip0, ip1, intersections.back());
     }
   }
+  //for(auto & corn : corners)
+  //{
+  //  auto & start = corn[0];
+  //  auto & end   = corn[1];
+  //  auto & fixed = corn[2];
+  //  auto ins0 = intersections[(NP+start-1)%NP].back();
+  //  auto ins1 = intersections[end].front();
+  //  Cell * c = ipoints[start].cells[0];
+  //  if(fixed) /** 固定转折点的情况 */
+  //  {
+  //    HalfEdge * h = _link_two_intersections(ins0, ins1, c);
+  //    for(int i = start; i != (end+1)%NP; i = (i+1)%NP) //TODO
+  //    {
+  //      mesh_->splite_halfedge(h, ipoints[i].point);
+  //    }
+  //  }
+  //  else
+  //  {
+  //    uint8_t count = 0;
+  //    Point * ep[2];
+  //    auto c2e = c->adj_edges();
+  //    for(const auto & e : c2e)
+  //    {
+  //      e.vertices(ep);
+  //      uint8_t flag = geometry_utils.relative_position_of_two_segments(
+  //          ins0.point, ins1.point, *(ep[0]), *(ep[1]));
+  //      if(flag==0)
+  //      {
+  //        count = 5;
+  //        break;
+  //      }
+  //      else if (flag != 4)
+  //      {
+  //        count++;
+  //      }
+  //    }
+  //    assert (count >=4);
+  //    HalfEdge * h = _link_two_intersections(ins0, ins1, c);
+  //    if(count>4)
+  //    {
+  //      Point p(0, 0);
+  //      count = 0;
+  //      for(uint32_t i = start; i != (end+1)%NP; i = (i+1)%NP)
+  //      {
+  //        count++;
+  //        p += ipoints[i].point;
+  //      }
+  //      p = p/count;
+  //      mesh_->splite_halfedge(h, p);
+  //    }
+  //  }
+  //}
+
+  /** 找到 intersection 的 out 和 in */
+  for(auto & ips : intersections)
+  {
+    int Ni = ips.size();
+    for(int j = 0; j < Ni-1; j++)
+      _find_out_and_in(ips[j], ips[j+1]); 
+  }
+
+  /** 3. 连接每个 fixed 角点*/
   for(auto & corn : corners)
   {
     auto & start = corn[0];
     auto & end   = corn[1];
     auto & fixed = corn[2];
-    auto ins0 = intersections[(NP+start-1)%NP].back();
-    auto ins1 = intersections[end].front();
+    auto & ins0 = intersections[(NP+start-1)%NP].back();
+    auto & ins1 = intersections[end].front();
     Cell * c = ipoints[start].cells[0];
     if(fixed) /** 固定转折点的情况 */
     {
-      HalfEdge * h = _link_two_intersections(ins0, ins1, c);
+      mesh_->splite_cell(c, ins0.out, ins1.in);
+      HalfEdge * h = ins0.out->next();
       for(int i = start; i != (end+1)%NP; i = (i+1)%NP) //TODO
       {
-        mesh_->splite_halfedge(h, ipoints[i].point);
-      }
-    }
-    else
-    {
-      uint8_t count = 0;
-      Point * ep[2];
-      auto c2e = c->adj_edges();
-      for(const auto & e : c2e)
-      {
-        e.vertices(ep);
-        uint8_t flag = geometry_utils.relative_position_of_two_segments(
-            ins0.point, ins1.point, *(ep[0]), *(ep[1]));
-        if(flag==0)
+        if(ipoints[i].is_fixed_point)
         {
-          count = 5;
+          mesh_->splite_halfedge(h, ipoints[i].point);
           break;
         }
-        else if (flag != 4)
-        {
-          count++;
-        }
-      }
-      assert (count >=4);
-      HalfEdge * h = _link_two_intersections(ins0, ins1, c);
-      if(count>4)
-      {
-        Point p(0, 0);
-        count = 0;
-        for(uint32_t i = start; i != (end+1)%NP; i = (i+1)%NP)
-        {
-          count++;
-          p += ipoints[i].point;
-        }
-        p = p/count;
-        mesh_->splite_halfedge(h, p);
       }
     }
   }
 
   /** 3. 连接每个 segment 的交点*/
-  for(uint32_t i = 0; i < NS; i++)
+  for(auto & ips : intersections)
   {
-    auto & ips = intersections[i];
     int Ni = ips.size();
     for(int j = 0; j < Ni-1; j++)
-      _link_two_intersections_in_same_segment(ips[j], ips[j+1]);
+    {
+      if(ips[j].out)
+        mesh_->splite_cell(ips[j].out->cell(), ips[j].out, ips[j+1].in);
+    }
   }
 }
 
