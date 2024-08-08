@@ -4,7 +4,6 @@
 #include <array>
 #include <deque>
 #include <queue>
-#include <stack>
 #include <vector>
 #include <algorithm>
 #include <memory>
@@ -100,7 +99,6 @@ public:
   void find_intersections_of_segment(InterfacePoint & ip0, 
       InterfacePoint & ip1, std::vector<Intersection> & intersections);
 
-
 private:
 
   /**
@@ -111,20 +109,23 @@ private:
   std::deque<std::array<uint32_t, 3> > _find_corners_of_same_cell(
       Interface & iface);
 
-  /**
-   * @brief  找到 c 中指向 a 和 b 的半边
-   */
   void _find_halfedge(Intersection & a, Intersection & b, Cell * c = nullptr);
 
-  /**
-   * @brief  找到 a 和 b 的 out 和 in
-   */
   void _find_out_and_in(Intersection & a, Intersection & b);
 
   /**
-   * @brief 获取内部单元
+   * @brief 连接两个相同的 segment 上的交点
+   * @param a: 交点 a
+   * @param b: 交点 b
    */
-  void _get_inner_cell(Array<uint8_t> & is_in_the_interface);
+  HalfEdge * _link_two_intersections_in_same_segment(Intersection & a, Intersection & b);
+
+  /**
+   * @brief 连接两个交点
+   * @param a: 交点 a
+   * @param b: 交点 b
+   */
+  HalfEdge * _link_two_intersections(Intersection & a, Intersection & b, Cell * c=nullptr);
 
 private:
   std::shared_ptr<Mesh> mesh_;
@@ -259,6 +260,68 @@ void CutMeshAlgorithm<Mesh>::find_intersections_of_segment(InterfacePoint & ip0,
 }
 
 /**
+ * @brief 连接交点 a 和点 b，要求 a 和 b 都在顶点上, 而且是相邻的
+ *        1. 判断两个点是否在同一条边上
+ *        2. 如果在同一条边上，可以跳过
+ *        3. 如果不在同一条边上，找到两个点的公共单元
+ *        4. 在公共单元中连接两个点
+ * @param a: 交点 a
+ * @param b: 交点 b
+ * @return: a 指向 b 的半边
+ */
+//template<typename Mesh>
+//Mesh::HalfEdge * CutMeshAlgorithm<Mesh>::_link_two_intersections_in_same_segment(
+//    Intersection & a, Intersection & b)
+//{  
+//  assert(a.type == 0 && b.type == 0);
+//
+//  /** 判断两个点是否在同一条边上 */
+//  Node * n0 = a.h->node();
+//  Node * n1 = b.h->node();
+//  auto n2e  = n0->adj_edges();
+//  for(auto & e_adj : n2e)
+//  {
+//    /** 两个交点在同一条边上 */
+//    if(e_adj.has_node(n1))
+//    {
+//      HalfEdge * h = e_adj.halfedge();
+//      if(h->node() == n1)
+//        return h;
+//      else
+//        return h->opposite();
+//    }
+//  } 
+//  /** 两个交点不在同一条边上 */
+//  return _link_two_intersections(a, b);
+//}
+
+/**
+ * @brief 连接两个交点 a 和 b，要求 a 和 b 都在顶点上
+ */
+//template<typename Mesh>
+//Mesh::HalfEdge * CutMeshAlgorithm<Mesh>::_link_two_intersections(Intersection & a, Intersection & b, Cell * c)
+//{
+//  assert(a.type == 0 && b.type == 0);
+//
+//  if(c==nullptr)
+//    mesh_->find_point((a.point+b.point)/2, c);
+//
+//  Node * n0 = a.h->node();
+//  Node * n1 = b.h->node();
+//  HalfEdge * out = nullptr;
+//  HalfEdge * in  = nullptr;
+//  for(auto & h : c->adj_halfedges())
+//  {
+//    if(h.node() == n0)
+//      out = &h;
+//    if(h.node() == n1)
+//      in = &h;
+//  }
+//  mesh_->splite_cell(c, out, in);
+//  return out->next();
+//}
+
+/**
  * @brief 找到同一个单元的界面角点
  * @param iface: 界面
  * @return: 返回角点列表
@@ -320,9 +383,6 @@ std::deque<std::array<uint32_t, 3> > CutMeshAlgorithm<Mesh>::_find_corners_of_sa
   return corners;
 }
 
-/**
- * @brief 找到 a 和 b 的 out 和 in
- */
 template<typename Mesh>
 void CutMeshAlgorithm<Mesh>::_find_out_and_in(Intersection & a, Intersection & b)
 {
@@ -352,9 +412,6 @@ void CutMeshAlgorithm<Mesh>::_find_out_and_in(Intersection & a, Intersection & b
   _find_halfedge(a, b);
 }
 
-/**
- * @brief 找到 c 中指向 a 和 b 的半边
- */
 template<typename Mesh>
 void CutMeshAlgorithm<Mesh>::_find_halfedge(Intersection & a, Intersection & b, Cell * c)
 {
@@ -374,6 +431,9 @@ void CutMeshAlgorithm<Mesh>::_find_halfedge(Intersection & a, Intersection & b, 
       b.in = &h;
   }
 }
+
+
+
 
 /**
  * @brieg 计算一个界面和网格的所有交点
@@ -439,6 +499,58 @@ void CutMeshAlgorithm<Mesh>::cut_by_loop_interface(Interface & iface)
       find_intersections_of_segment(ip0, ip1, intersections.back());
     }
   }
+  //for(auto & corn : corners)
+  //{
+  //  auto & start = corn[0];
+  //  auto & end   = corn[1];
+  //  auto & fixed = corn[2];
+  //  auto ins0 = intersections[(NP+start-1)%NP].back();
+  //  auto ins1 = intersections[end].front();
+  //  Cell * c = ipoints[start].cells[0];
+  //  if(fixed) /** 固定转折点的情况 */
+  //  {
+  //    HalfEdge * h = _link_two_intersections(ins0, ins1, c);
+  //    for(int i = start; i != (end+1)%NP; i = (i+1)%NP) //TODO
+  //    {
+  //      mesh_->splite_halfedge(h, ipoints[i].point);
+  //    }
+  //  }
+  //  else
+  //  {
+  //    uint8_t count = 0;
+  //    Point * ep[2];
+  //    auto c2e = c->adj_edges();
+  //    for(const auto & e : c2e)
+  //    {
+  //      e.vertices(ep);
+  //      uint8_t flag = geometry_utils.relative_position_of_two_segments(
+  //          ins0.point, ins1.point, *(ep[0]), *(ep[1]));
+  //      if(flag==0)
+  //      {
+  //        count = 5;
+  //        break;
+  //      }
+  //      else if (flag != 4)
+  //      {
+  //        count++;
+  //      }
+  //    }
+  //    assert (count >=4);
+  //    HalfEdge * h = _link_two_intersections(ins0, ins1, c);
+  //    if(count>4)
+  //    {
+  //      Point p(0, 0);
+  //      count = 0;
+  //      for(uint32_t i = start; i != (end+1)%NP; i = (i+1)%NP)
+  //      {
+  //        count++;
+  //        p += ipoints[i].point;
+  //      }
+  //      p = p/count;
+  //      mesh_->splite_halfedge(h, p);
+  //    }
+  //  }
+  //}
 
   /** 找到 intersection 的 out 和 in */
   for(auto & ips : intersections)
@@ -493,36 +605,6 @@ void CutMeshAlgorithm<Mesh>::cut_by_loop_interface(Interface & iface)
       }
     }
   }
-  _get_inner_cell(is_in_cell);
-  mesh_->update();
-}
-
-template<typename Mesh>
-void CutMeshAlgorithm<Mesh>::_get_inner_cell(Array<uint8_t> & is_in_the_interface)
-{
-  /** 处理内部单元标记 */
-  std::stack<typename Mesh::Cell*> inner_cell;
-  auto & cell = *(mesh_->get_cell());
-  for(auto & c : cell)
-  {
-    if(is_in_the_interface[c.index()]==1)
-      inner_cell.push(&c);
-  }
-  while(!inner_cell.empty())
-  {
-    typename Mesh::Cell * c = inner_cell.top();
-    inner_cell.pop();
-    for(auto & ci : c->adj_cells())
-    {
-      if(is_in_the_interface[ci.index()]==0)
-      {
-        inner_cell.push(&ci);
-        is_in_the_interface[ci.index()]=1;
-      }
-    }
-  }
-  for(auto & c : cell)
-    is_in_the_interface[c.index()] = is_in_the_interface[c.index()]==1;
 }
 
 
