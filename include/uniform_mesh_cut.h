@@ -70,9 +70,9 @@ public:
     uint32_t idx = Base::find_point(p);
     const auto & cellc = subcell_[idx];
 
-    std::vector<Point *> points(32, nullptr);
     for(auto & c : cellc)
     {
+      std::vector<Point *> points(32, nullptr);
       int N = c->vertices(points.data());
       points.resize(N);
       uint32_t flag = geo_.relative_position_of_point_and_polygon(points, p, index);

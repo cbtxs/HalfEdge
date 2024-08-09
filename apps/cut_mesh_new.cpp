@@ -27,6 +27,57 @@ using InterfacePoint = typename CutMeshAlg::InterfacePoint;
 extern "C"
 {
 
+void check_mesh(Mesh & m)
+{
+  uint32_t NC = m.number_of_cells();
+  uint32_t NE = m.number_of_edges();
+  uint32_t NN = m.number_of_nodes();
+  uint32_t NHE = m.number_of_halfedges();
+  std::cout << " number of nodes : " << NN << std::endl;
+  std::cout << " number of cells : " << NC << std::endl;
+  std::cout << " number of edges : " << NE << std::endl;
+  std::cout << " number of halfedges : " << NHE << std::endl;
+
+  auto & node = *(m.get_node());
+  auto & edge = *(m.get_edge());
+  auto & cell = *(m.get_cell());
+  auto & halfedge = *(m.get_halfedge());
+
+  for(auto & n : node)
+  {
+    assert(n.halfedge()->node()==&n);
+  }
+
+  for(auto & e : edge)
+  {
+    assert(e.halfedge()->edge()==&e);
+    assert(e.halfedge()->opposite()->edge()==&e);
+  }
+
+  for(auto & c : cell)
+  {
+    std::cout << c.area() << std::endl;
+    assert(c.area()>0.0);
+    for(HalfEdge * h = c.halfedge(); h != c.halfedge()->previous(); h=h->next())
+      assert(h->cell()==&c);
+    for(HalfEdge * h = c.halfedge(); h != c.halfedge()->next(); h=h->previous())
+      assert(h->cell()==&c);
+  }
+
+  uint32_t NBE = 0;
+  for(auto & h : halfedge)
+  {
+    assert(h.previous()->next()==&h);
+    if(h.opposite() != &h)
+      assert(h.previous()->node()==h.opposite()->node());
+    else
+      NBE++;
+  }
+  
+}
+
+
+
 void get_node(std::shared_ptr<Mesh> meshptr, double * point_out)
 {
   auto & nindex = *(meshptr->get_node_indices());
@@ -235,6 +286,10 @@ void get_cut_mesh2(MeshParameter mp,
   meshptr1->update();
   meshptr2->update();
 
+  check_mesh(*meshptr0);
+  check_mesh(*meshptr1);
+  check_mesh(*meshptr2);
+
   /** 单元编号 */
   auto & cindex0 = *(meshptr0->get_cell_indices());
   auto & cindex1 = *(meshptr1->get_cell_indices());
@@ -342,6 +397,7 @@ int test111()
   delete[] halfedge_out1;
   return 0;
 }
+
 
 int main(int, char ** )
 {

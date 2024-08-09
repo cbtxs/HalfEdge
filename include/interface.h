@@ -128,7 +128,8 @@ void InterfaceCut<Mesh>::point_to_interface_point(Point point, InterfacePoint & 
     cells.resize(2);
     edge->adj_cell(cells.data());
     edge->vertices(p);
-    geometry_utils.project_point_to_line(*(p[0]), *(p[2]), point); /**< 更新点的坐标 */
+    Point pp = point;
+    geometry_utils.project_point_to_line(*(p[0]), *(p[1]), point); /**< 更新点的坐标 */
 
     ip.h = edge->halfedge(); 
   }
