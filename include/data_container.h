@@ -191,13 +191,9 @@ public:
     indices_ = Base::template add_data<uint32_t>("indices");
   }
 
-  std::shared_ptr<DataArray<Entity> > get_entity() { return entity_;}
+  std::shared_ptr<DataArray<Entity> > get_entity() const { return entity_;}
 
-  const std::shared_ptr<DataArray<Entity> > get_entity() const  { return entity_;}
-
-  std::shared_ptr<DataArray<uint32_t> > get_entity_indices() { return indices_;}
-
-  const std::shared_ptr<DataArray<uint32_t> > get_entity_indices() const  { return indices_;}
+  std::shared_ptr<DataArray<uint32_t> > get_entity_indices() const { return indices_;}
 
   Entity & add_entity()
   {

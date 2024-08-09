@@ -1,7 +1,9 @@
 #include <iostream>
+#include <chrono>
 
 #include "chunk_array.h"
 
+using namespace std::chrono;
 using namespace HEM;
 
 
@@ -37,9 +39,6 @@ void test_chunkarray_operaotr()
   l.resize(25);
   for(auto & val : l)
     std::cout << "val : " << val << " " << (long)(&val)-start << " " << ((long)(&val)-start)/4 << std::endl;
-
-
-
 }
 
 int main()

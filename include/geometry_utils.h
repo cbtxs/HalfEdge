@@ -253,6 +253,18 @@ public:
     return relative_position_of_two_segments(p0, p1, q0, q1, p);
   }
 
+  /**
+   * @brief Determines the quadrant of a vector
+   * @param v The vector
+   * @return The quadrant of the vector
+   */
+  uint8_t quadrant_of_vector(const Vector2d & v)
+  {
+    uint8_t a = v.x<0;
+    uint8_t b = v.y<0;
+    return a+3*b-2*a*b;
+  }
+
 private:
   double tol_;
 

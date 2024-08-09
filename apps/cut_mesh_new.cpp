@@ -1,10 +1,13 @@
 #ifndef CUT_MESH_APP
 #define CUT_MESH_APP
 
-#include "figure.h"
+//#include "figure.h"
+
 #include "uniform_mesh_cut.h"
 #include "cut_mesh_algorithm0.h"
 #include <cmath>
+#include <memory>
+#include <numeric>
 
 
 using namespace HEM;
@@ -77,19 +80,17 @@ void generate_interface(double * point,
                         int * segment, 
                         int NP, 
                         int NS, 
-                        Interface & iface)
+                        std::vector<Point> & points,
+                        std::vector<bool> & is_fixed_points,
+                        bool & is_loop_interface)
 {
-  std::vector<Point> & points = iface.points;
   for(int i = 0; i < NP*2; i+=2)
     points.push_back(Point(point[i], point[i+1]));
 
-  auto & is_fixed_points = iface.is_fixed_points;
   for(int i = 0; i < NP; i++)
     is_fixed_points.push_back(is_fixed_point[i]);
 
-  auto & segments = iface.segments;
-  for(int i = 0; i < NS; i++)
-    segments.push_back(segment[i]);
+  is_loop_interface = segment[0] == segment[NS-1];
 }
 
 struct MeshParameter
@@ -137,7 +138,11 @@ void get_cut_mesh(double a, double b, double c, double d, int nx, int ny,
   std::shared_ptr<Mesh> meshptr = std::make_shared<Mesh>(a, b, hx, hy, nx, ny);
   CutMeshAlg cut(meshptr);
 
-  generate_interface(point, is_fixed_point, segment, NP, NS, iface);
+  std::vector<Point> points;
+  std::vector<bool> is_fixed_points;
+  bool is_loop_interface;
+  generate_interface(point, is_fixed_point, segment, NP, NS, points, is_fixed_points, is_loop_interface);
+  Interface iface(points, is_fixed_points, meshptr, is_loop_interface);
 
   cut.cut_by_loop_interface(iface);
   meshptr->update();
@@ -179,83 +184,52 @@ void get_cut_mesh2(MeshParameter mp,
   int    * idx1          = out.idx1;          /** 密网格单元在网格 1 中单元的编号 */
 
   /**
-   * meshptr2: cut 两次的网格
    * meshprt0 : 被第 0 个界面 cut 的网格
    * meshprt1 : 被第 1 个界面 cut 的网格
+   * meshptr2 : cut 两次的网格
+   * 1. 
    */
   std::shared_ptr<Mesh> meshptr1 = std::make_shared<Mesh>(a, b, hx, hy, nx, ny);
   std::shared_ptr<Mesh> meshptr2 = std::make_shared<Mesh>(*meshptr1);
   CutMeshAlg cut0(meshptr2);
   CutMeshAlg cut1(meshptr1);
 
-  //std::cout << std::to_string(a) << " " << std::to_string(b) << " " << std::to_string(c)  << " " << std::to_string(d) << "\n ";
-  //std::cout << " nx :" << std::to_string(nx) << " ny : " << std::to_string(ny) << " \n";
-  //std::cout << " NP0 : " << std::to_string(NP0) << " NS0 " << std::to_string(NS0) << "\n"; 
-  //std::cout << " NP1 : " << std::to_string(NP1) << " NS1 " << std::to_string(NS1) << "\n"; 
-  //std::cout << "p0 : " << " \n";
-  //for (int i = 0; i < NP0*2;  i+=2) 
-  //{
-  //  std::cout << " x : " << std::to_string(point0[i]);
-  //  std::cout << " y : " << std::to_string(point0[i+1]) <<" \n" ;
-  //}
+  std::vector<Point> points0, points1;
+  std::vector<bool> is_fixed_points0, is_fixed_points1;
+  bool is_loop_interface0, is_loop_interface1;
+  generate_interface(point0, is_fixed_point0, segment0, NP0, NS0, points0, is_fixed_points0, is_loop_interface0);
+  generate_interface(point1, is_fixed_point1, segment1, NP1, NS1, points1, is_fixed_points1, is_loop_interface1);
 
-  //std::cout << "p1 : " << " \n";
-  //for (int i = 0; i < NP0*2;  i+=2) 
-  //{
-  //  std::cout << " x : " << std::to_string(point1[i]);
-  //  std::cout << " y : " << std::to_string(point1[i+1]) <<" \n" ;
-  //}
-
-  //std::cout << " segment0 : " << std::endl;
-  //for (int i = 0; i < NS0;  i+=1) 
-  //  std::cout << std::to_string(segment0[i]);
-  //std::cout << std::endl;
-
-  //std::cout << " segment1 : " << std::endl;
-  //for (int i = 0; i < NS0;  i+=1) 
-  //  std::cout << std::to_string(segment1[i]);
-  //std::cout << std::endl;
-
-  //std::cout << " is_fixed_point0 : " << std::endl;
-  //for (int i = 0; i < NP0;  i+=1) 
-  //  std::cout << std::to_string(is_fixed_point0[i]);
-  //std::cout << std::endl;
-
-  //std::cout << " is_fixed_point1 : " << std::endl;
-  //for (int i = 0; i < NP0;  i+=1) 
-  //  std::cout << std::to_string(is_fixed_point1[i]);
-  //std::cout << std::endl;
-
-  Interface iface0, iface1;
-  generate_interface(point0, is_fixed_point0, segment0, NP0, NS0, iface0);
-  generate_interface(point1, is_fixed_point1, segment1, NP1, NS1, iface1);
+  /** iface0 的背景网格是 meshptr2 */
+  Interface iface0(points0, is_fixed_points0, meshptr2, is_loop_interface0);
+  Interface iface1(points1, is_fixed_points1, meshptr1, is_loop_interface1);
 
   cut0.cut_by_loop_interface(iface0);
+  cut1.cut_by_loop_interface(iface1);
+
   std::shared_ptr<Mesh> meshptr0 = std::make_shared<Mesh>(*meshptr2); 
 
-  Interface iface2 = iface1;
-  cut0.cut_by_loop_interface(iface1); 
+  Interface iface2(points1, is_fixed_points1, meshptr2, is_loop_interface1);
 
-  cut1.cut_by_loop_interface(iface2);
+  cut0.cut_by_loop_interface(iface2); 
 
+  //auto & mesh0 = *meshptr0;
+  //Figure fig0("out0", mesh0.get_box());
+  //fig0.draw_mesh(mesh0, true);
+  //fig0.draw_halfedge(mesh0, true);
+  //fig0.draw_node(mesh0, true);
 
-  auto & mesh0 = *meshptr0;
-  Figure fig0("out0", mesh0.get_box());
-  fig0.draw_mesh(mesh0, true);
-  fig0.draw_halfedge(mesh0, true);
-  fig0.draw_node(mesh0, true);
+  //auto & mesh1 = *meshptr1;
+  //Figure fig1("out1", mesh1.get_box());
+  //fig1.draw_mesh(mesh1, true);
+  //fig1.draw_halfedge(mesh1, true);
+  //fig1.draw_node(mesh1, true);
 
-  auto & mesh1 = *meshptr1;
-  Figure fig1("out1", mesh1.get_box());
-  fig1.draw_mesh(mesh1, true);
-  fig1.draw_halfedge(mesh1, true);
-  fig1.draw_node(mesh1, true);
-
-  auto & mesh2 = *meshptr2;
-  Figure fig2("out2", mesh2.get_box());
-  fig2.draw_mesh(mesh2, true);
-  fig2.draw_halfedge(mesh2, true);
-  fig2.draw_node(mesh2, true);
+  //auto & mesh2 = *meshptr2;
+  //Figure fig2("out2", mesh2.get_box());
+  //fig2.draw_mesh(mesh2, true);
+  //fig2.draw_halfedge(mesh2, true);
+  //fig2.draw_node(mesh2, true);
 
   meshptr0->update();
   meshptr1->update();
@@ -269,8 +243,8 @@ void get_cut_mesh2(MeshParameter mp,
   { 
     uint32_t cidx = cindex2[c.index()];
     Point p = c.inner_point();
-    idx0[cidx] = cindex0[meshptr0->find_point(p, false)->index()];
-    idx1[cidx] = cindex1[meshptr1->find_point(p, false)->index()];
+    idx0[cidx] = cindex0[meshptr0->find_point(p)->index()];
+    idx1[cidx] = cindex1[meshptr1->find_point(p)->index()];
     return true;
   };
   meshptr2->for_each_entity(fun);
@@ -290,6 +264,91 @@ void get_cut_mesh2(MeshParameter mp,
   get_node(meshptr2, point_out2);
   get_halfedge(meshptr2, halfedge_out2);
 }
+
+int test111()
+{
+  MeshParameter mp{-0.0, 0.0, 1, 1, 10, 10};
+  double point0[] = {
+        0.6837915623240461, 0.7786111710226634, 0.6641526882414552,
+        0.8139936430189582, 0.6377933838151373, 0.8446985574458237,
+        0.6057928020653924, 0.8694688514989499, 0.569461050568964,
+        0.8872904264294158, 0.5302855555009154, 0.8974336648656219,
+        0.4898701662322575, 0.8994833014342103, 0.4498694935482559,
+        0.8933554237732405, 0.4119211696884731, 0.879300907914148,
+        0.3775788034904674, 0.8578951473875395, 0.3482483754614418,
+        0.8300144965444441, 0.3251306767710836, 0.796800392506216,
+        0.3091721487199902, 0.7596126245946713, 0.3010261353216209,
+        0.7199736643974861, 0.3010261353216209, 0.6795063356025133,
+        0.3091721487199902, 0.6398673754053282, 0.3251306767710835,
+        0.6026796074937836, 0.3482483754614418, 0.5694655034555552,
+        0.3775788034904675, 0.5415848526124599, 0.4119211696884731,
+        0.5201790920858513, 0.4498694935482559, 0.5061245762267589,
+        0.4898701662322575, 0.4999966985657891, 0.5302855555009152,
+        0.5020463351343774, 0.5694610505689639, 0.5121895735705836,
+        0.6057928020653924, 0.5300111485010495, 0.6377933838151373,
+        0.5547814425541757, 0.6641526882414552, 0.5854863569810412,
+        0.6837915623240461, 0.620868828977336,  0.6959059882504989,
+        0.6594802959822677, 0.7,                0.6997399999999997,
+        0.695905988250499,  0.7399997040177315
+    };
+
+    // 定义并初始化第二个数组
+    double point1[62] = {
+        0.6837915623240461, 0.7785911710226634, 0.6641526882414552,
+        0.8139736430189581, 0.6377933838151373, 0.8446785574458237,
+        0.6057928020653924, 0.8694488514989499, 0.569461050568964,
+        0.8872704264294158, 0.5302855555009154, 0.8974136648656219,
+        0.4898701662322575, 0.8994633014342103, 0.4498694935482559,
+        0.8933354237732405, 0.4119211696884731, 0.879280907914148,
+        0.3775788034904674, 0.8578751473875394, 0.3482483754614418,
+        0.8299944965444441, 0.3251306767710836, 0.796780392506216,
+        0.3091721487199902, 0.7595926245946713, 0.3010261353216209,
+        0.7199536643974861, 0.3010261353216209, 0.6794863356025133,
+        0.3091721487199902, 0.6398473754053282, 0.3251306767710835,
+        0.6026596074937836, 0.3482483754614418, 0.5694455034555552,
+        0.3775788034904675, 0.5415648526124599, 0.4119211696884731,
+        0.5201590920858513, 0.4498694935482559, 0.5061045762267589,
+        0.4898701662322575, 0.4999766985657891, 0.5302855555009152,
+        0.5020263351343773, 0.5694610505689639, 0.5121695735705836,
+        0.6057928020653924, 0.5299911485010494, 0.6377933838151373,
+        0.5547614425541757, 0.6641526882414552, 0.5854663569810412,
+        0.6837915623240461, 0.620848828977336,  0.6959059882504989,
+        0.6594602959822676, 0.7,                0.6997199999999997,
+        0.695905988250499,  0.7399797040177315
+    };
+  bool is_fixed_point[31] = {1};
+  int segment[32] = {0};
+  std::iota(segment, segment+32, 0);
+  segment[31] = 0;
+
+  InterfaceParameter i0{point0, is_fixed_point, segment, 31, 32};
+  InterfaceParameter i1{point1, is_fixed_point, segment, 31, 32};
+
+  const static int N = 100000;
+  double * point_out0 = new double[N*2];
+  int * halfedge_out0 = new int[N*6];
+  double * point_out1 = new double[N*2];
+  int * halfedge_out1 = new int[N*6];
+  int inner_cell[N] = {0};
+  int idx0[N] = {0};
+  int idx1[N] = {0};
+  int NN[6] = {0};
+
+  OutParameter out{point_out0, halfedge_out0, inner_cell, point_out1, halfedge_out1, idx0, idx1, NN};
+  get_cut_mesh2(mp, i0, i1, out);
+  delete[] point_out0;
+  delete[] halfedge_out0;
+  delete[] point_out1;
+  delete[] halfedge_out1;
+  return 0;
+}
+
+int main(int, char ** )
+{
+  test111();
+  return 0;
+}
+
 
 }
 

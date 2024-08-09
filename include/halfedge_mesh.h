@@ -42,12 +42,12 @@ public:
   using Array = typename NodeDataContainer::Base::template DataArray<T>;
 
 public:
-  HalfEdgeMeshBase(): geometry_utils_(1e-10)
+  HalfEdgeMeshBase(uint32_t NN = 0, uint32_t NE = 0, uint32_t NC = 0, uint32_t NH = 0): geometry_utils_(1e-10)
   {
-    node_data_ptr_ = std::make_shared<NodeDataContainer>();
-    edge_data_ptr_ = std::make_shared<EdgeDataContainer>();
-    cell_data_ptr_ = std::make_shared<CellDataContainer>();
-    halfedge_data_ptr_ = std::make_shared<HalfEdgeDataContainer>();
+    node_data_ptr_ = std::make_shared<NodeDataContainer>(NN);
+    edge_data_ptr_ = std::make_shared<EdgeDataContainer>(NE);
+    cell_data_ptr_ = std::make_shared<CellDataContainer>(NC);
+    halfedge_data_ptr_ = std::make_shared<HalfEdgeDataContainer>(NH);
   }
 
   /** 复制构造函数 */

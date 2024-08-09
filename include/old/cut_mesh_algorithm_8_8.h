@@ -50,6 +50,8 @@ public:
     Point point;
     HalfEdge * h;
     uint8_t type = 0;
+    HalfEdge * out;
+    HalfEdge * in;
     bool operator==(const Intersection & other)
     {
       return point.x == other.point.x && point.y == other.point.y;
@@ -106,7 +108,19 @@ private:
    * @param iface: 界面
    * @param corners: 返回角点列表
    */
-  std::deque<std::array<uint32_t, 3> > _find_corners_of_same_cell(Interface & iface);
+  std::deque<std::array<uint32_t, 3> > _find_corners_of_same_cell(
+      Interface & iface);
+
+  /**
+   * @brief  找到 c 中指向 a 和 b 的半边
+   */
+  void _find_halfedge(Intersection & a, Intersection & b, Cell * c = nullptr);
+
+  /**
+   * @brief  找到 a 和 b 的 out 和 in
+   */
+  void _find_out_and_in(Intersection & a, Intersection & b);
+
 
   /**
    * @brief 找到 a，b 连接线所在的单元, 要求 a 和 b 都在顶点上，而且不在同一条边上
@@ -330,6 +344,61 @@ std::deque<std::array<uint32_t, 3> > CutMeshAlgorithm<Mesh>::_find_corners_of_sa
 }
 
 /**
+ * @brief 找到 a 和 b 的 out 和 in
+ */
+template<typename Mesh>
+void CutMeshAlgorithm<Mesh>::_find_out_and_in(Intersection & a, Intersection & b)
+{
+  assert(a.type == 0 && b.type == 0);
+
+  /** 判断两个点是否在同一条边上 */
+  Node * n0 = a.h->node();
+  Node * n1 = b.h->node();
+  auto n2e  = n0->adj_edges();
+
+  for(auto & e_adj : n2e)
+  {
+    /** 两个交点在同一条边上 */
+    if(e_adj.has_node(n1))
+    {
+      HalfEdge * h = e_adj.halfedge();
+      if(h->node() == n1)
+        b.in = h;
+      else
+        b.in = h->opposite();
+      a.out = nullptr;
+      return;
+    }
+  } 
+
+  /** 两个交点不在同一条边上 */
+  _find_halfedge(a, b);
+}
+
+/**
+ * @brief 找到 c 中指向 a 和 b 的半边
+ */
+template<typename Mesh>
+void CutMeshAlgorithm<Mesh>::_find_halfedge(Intersection & a, Intersection & b, Cell * c)
+{
+  assert(a.type == 0 && b.type == 0);
+
+  /** 判断两个点是否在同一条边上 */
+  Node * n0 = a.h->node();
+  Node * n1 = b.h->node();
+
+  if(c==nullptr)
+    mesh_->find_point((a.point+b.point)/2, c);
+  for(auto & h : c->adj_halfedges())
+  {
+    if(h.node() == n0)
+      a.out = &h;
+    if(h.node() == n1)
+      b.in = &h;
+  }
+}
+
+/**
  * @brief 连接交点 a 和点 b，要求 a 和 b 都在顶点上, 而且是相邻的
  *        1. 判断两个点是否在同一条边上
  *        2. 如果在同一条边上，可以跳过
@@ -382,6 +451,7 @@ Mesh::HalfEdge * CutMeshAlgorithm<Mesh>::_link_two_intersections(Intersection & 
   if(c==nullptr) /**< _link_two_intersections_in_same_segment 调用的情况 c */
     c = _find_link_cell(a, b);
     
+
   Node * n0 = a.h->node();
   Node * n1 = b.h->node();
   HalfEdge * out = nullptr;
@@ -466,8 +536,8 @@ void CutMeshAlgorithm<Mesh>::cut_by_loop_interface(Interface & iface)
     find_intersections_of_segment(ip0, ip1, intersections[i]);
   }
 
-  /** 2. 处理转折点
-   * 对于有固定点的情况，连接了以后折断半边连接到固定点
+  /** 2. 处理转折点 out in 
+   * 对于有固定点的情况，连接了以后加密连接边
    * 对于没有固定点的情况，就把他们变成一个 segment
    */
   uint32_t NC = corners.size();
@@ -508,6 +578,40 @@ void CutMeshAlgorithm<Mesh>::cut_by_loop_interface(Interface & iface)
     }
   }
 
+  /** 找到 intersection 的 out 和 in */
+  //for(auto & ips : intersections)
+  //{
+  //  int Ni = ips.size();
+  //  for(int j = 0; j < Ni-1; j++)
+  //    _find_out_and_in(ips[j], ips[j+1]); 
+  //}
+
+  ///** 3. 连接每个 fixed 角点*/
+  //for(auto & corn : corners)
+  //{
+  //  auto & start = corn[0];
+  //  auto & end   = corn[1];
+  //  auto & fixed = corn[2];
+  //  auto & ins0 = intersections[(NP+start-1)%NP].back();
+  //  auto & ins1 = intersections[end].front();
+  //  Cell * c = ipoints[start].cells[0];
+  //  if(fixed) /** 固定转折点的情况 */
+  //  {
+  //    mesh_->splite_cell(c, ins0.out, ins1.in);
+  //    HalfEdge * h = ins0.out->next();
+  //    for(int i = start; i != (end+1)%NP; i = (i+1)%NP) //TODO
+  //    {
+  //      if(ipoints[i].is_fixed_point)
+  //      {
+  //        mesh_->splite_halfedge(h, ipoints[i].point);
+  //        break;
+  //      }
+  //    }
+  //    is_in_cell[h->opposite()->cell()->index()] = 2;
+  //    is_in_cell[h->cell()->index()] = 1;
+  //  }
+  //}
+
   /** 3. 连接每个 segment 的交点*/
   for(auto & ips : intersections)
   {
@@ -517,6 +621,17 @@ void CutMeshAlgorithm<Mesh>::cut_by_loop_interface(Interface & iface)
       HalfEdge * h = _link_two_intersections_in_same_segment(ips[j], ips[j+1]);
       is_in_cell[h->opposite()->cell()->index()] = 2;
       is_in_cell[h->cell()->index()] = 1;
+      //if(ips[j].out)
+      //{
+      //  mesh_->splite_cell(ips[j].out->cell(), ips[j].out, ips[j+1].in);
+      //  is_in_cell[ips[j].out->next_oppo()->cell()->index()] = 2;
+      //  is_in_cell[ips[j].out->next()->cell()->index()] = 1;
+      //}
+      //else
+      //{
+      //  is_in_cell[ips[j+1].in->opposite()->cell()->index()] = 2;
+      //  is_in_cell[ips[j+1].in->cell()->index()] = 1;
+      //}
     }
   }
   _get_inner_cell(is_in_cell);

@@ -28,6 +28,9 @@ public: /** 类型定义 */
    * @param type 0: 半边的节点;
    *             1: 半边内部; 
    *             2: 单元内的点;
+   * @note 1. 界面不能自相交
+   *       2. 一个单元中如果有固定点，那么这个单元的所有点都必须是固定点,
+   *          如果不是就移除非固定点。
    */
   struct InterfacePoint
   {
@@ -44,6 +47,8 @@ private: /** 属性 */
   bool is_loop_;
 
 public: /** 方法 */
+
+  InterfaceCut();
 
   /**
    * @brief 构造函数
@@ -78,7 +83,7 @@ public: /** 方法 */
    * 如果点在边上，返回两个单元，如果点在节点上，返回相邻的单元, 
    * 同时更新点的坐标。
    */
-  void point_to_interface_point(Point & point, InterfacePoint & inerface_point);
+  void point_to_interface_point(Point point, InterfacePoint & inerface_point);
 
   /**
    * @brief 判断界面是否是闭的
@@ -96,7 +101,7 @@ public: /** 方法 */
  * 同时更新点的坐标。
  */
 template<typename Mesh>
-void InterfaceCut<Mesh>::point_to_interface_point(Point & point, InterfacePoint & ip)
+void InterfaceCut<Mesh>::point_to_interface_point(Point point, InterfacePoint & ip)
 {
   auto & cells = ip.cells;
   auto & geometry_utils = mesh_->geometry_utils();

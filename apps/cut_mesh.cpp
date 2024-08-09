@@ -1,14 +1,11 @@
 #ifndef CUT_MESH_APP
 #define CUT_MESH_APP
 
-#include "figure.h"
-#include "geometry.h"
+//#include "figure.h"
 #include "entity.h"
 #include "uniform_mesh.h"
 #include "cut_mesh_algorithm.h"
 #include <cmath>
-#include <fstream>
-#include <sstream>
 #include <iostream>
 #include <numeric>
 
@@ -244,23 +241,23 @@ void get_cut_mesh2(MeshParameter mp,
   cut1.cut_by_loop_interface(iface2);
 
 
-  auto & mesh0 = *meshptr0;
-  Figure fig0("out0", mesh0.get_box());
-  fig0.draw_mesh(mesh0, true);
-  fig0.draw_halfedge(mesh0, true);
-  fig0.draw_node(mesh0, true);
+  //auto & mesh0 = *meshptr0;
+  //Figure fig0("out0", mesh0.get_box());
+  //fig0.draw_mesh(mesh0, true);
+  //fig0.draw_halfedge(mesh0, true);
+  //fig0.draw_node(mesh0, true);
 
-  auto & mesh1 = *meshptr1;
-  Figure fig1("out1", mesh1.get_box());
-  fig1.draw_mesh(mesh1, true);
-  fig1.draw_halfedge(mesh1, true);
-  fig1.draw_node(mesh1, true);
+  //auto & mesh1 = *meshptr1;
+  //Figure fig1("out1", mesh1.get_box());
+  //fig1.draw_mesh(mesh1, true);
+  //fig1.draw_halfedge(mesh1, true);
+  //fig1.draw_node(mesh1, true);
 
-  auto & mesh2 = *meshptr2;
-  Figure fig2("out2", mesh2.get_box());
-  fig2.draw_mesh(mesh2, true);
-  fig2.draw_halfedge(mesh2, true);
-  fig2.draw_node(mesh2, true);
+  //auto & mesh2 = *meshptr2;
+  //Figure fig2("out2", mesh2.get_box());
+  //fig2.draw_mesh(mesh2, true);
+  //fig2.draw_halfedge(mesh2, true);
+  //fig2.draw_node(mesh2, true);
 
   meshptr0->update();
   meshptr1->update();

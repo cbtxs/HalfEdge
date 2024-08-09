@@ -82,59 +82,69 @@ UniformMesh<D>::UniformMesh(double orign_x,
                          double hy, 
                          uint32_t nx, 
                          uint32_t ny):
-  Base(), param_(orign_x, orign_y, hx, hy, nx, ny)
+  Base((nx+1)*(ny+1), 2*nx*ny + nx + ny, nx*ny, 4*nx*ny), param_(orign_x, orign_y, hx, hy, nx, ny)
 {
-  uint32_t N = 0;
   auto & node = *(this->get_node()); 
+  auto & edge = *(this->get_edge());
+  auto & cell = *(this->get_cell());
   auto & halfedge = *(this->get_halfedge()); 
+
+  uint32_t NN = 0;
   for(uint32_t i = 0; i < nx+1; i++)
   {
     for(uint32_t j = 0; j < ny+1; j++)
     {
-      Node & n = this->add_node();
-      n.reset(Point(i*hx+orign_x, j*hy+orign_y), N++, nullptr);
+      Node & n = node[NN];
+      n.reset(Point(i*hx+orign_x, j*hy+orign_y), NN++, nullptr);
     }
   }
 
-  N = 0;
+  uint32_t NC = 0;
   for(uint32_t i = 0; i < nx; i++)
   {
     for(uint32_t j = 0; j < ny; j++)
     {
-      HalfEdge & h0 = this->add_halfedge();
-      HalfEdge & h1 = this->add_halfedge();
-      HalfEdge & h2 = this->add_halfedge();
-      HalfEdge & h3 = this->add_halfedge();
-      node[i*(ny+1)+j].set_halfedge(&h0);
-      node[(i+1)*(ny+1)+j].set_halfedge(&h1);
-      node[(i+1)*(ny+1)+j+1].set_halfedge(&h2);
-      node[i*(ny+1)+j+1].set_halfedge(&h3);
+      HalfEdge & h0 = halfedge[4*NC]; 
+      HalfEdge & h1 = halfedge[4*NC+1]; 
+      HalfEdge & h2 = halfedge[4*NC+2]; 
+      HalfEdge & h3 = halfedge[4*NC+3]; 
 
-      Cell & c = this->add_cell();
-      h0.reset(&h1, &h3, &h0, &c, nullptr, &node[i*(ny+1)+j], 4*N);
-      h1.reset(&h2, &h0, &h1, &c, nullptr, &node[(i+1)*(ny+1)+j], 4*N+1);
-      h2.reset(&h3, &h1, &h2, &c, nullptr, &node[(i+1)*(ny+1)+j+1], 4*N+2);
-      h3.reset(&h0, &h2, &h3, &c, nullptr, &node[i*(ny+1)+j+1], 4*N+3);
-      c.reset(N++, &h0);
+      Node & n0 = node[i*(ny+1)+j];
+      Node & n1 = node[(i+1)*(ny+1)+j];
+      Node & n2 = node[(i+1)*(ny+1)+j+1];
+      Node & n3 = node[i*(ny+1)+j+1];
+
+      n0.set_halfedge(&h0);
+      n1.set_halfedge(&h1);
+      n2.set_halfedge(&h2);
+      n3.set_halfedge(&h3);
+
+      Cell & c = cell[NC];
+      h0.reset(&h1, &h3, &h0, &c, nullptr, &n0, 4*NC);
+      h1.reset(&h2, &h0, &h1, &c, nullptr, &n1, 4*NC+1);
+      h2.reset(&h3, &h1, &h2, &c, nullptr, &n2, 4*NC+2);
+      h3.reset(&h0, &h2, &h3, &c, nullptr, &n3, 4*NC+3);
+
+      c.reset(NC++, &h0);
     }
   }
 
-  N = 0;
+  uint32_t NE = 0;
   for(uint32_t j = 0; j < ny; j++)
   {
-    Edge & e = this->add_edge();
+    Edge & e = edge[NE]; 
     HalfEdge & h = halfedge[4*j];
-    e.reset(N++, &h);
+    e.reset(NE++, &h);
     h.set_edge(&e);
   }
   for(uint32_t i = 1; i < nx; i++)
   {
     for(uint32_t j = 0; j < ny; j++)
     {
-      Edge & e = this->add_edge();
+      Edge & e = edge[NE]; 
       HalfEdge & h0 = halfedge[4*(i*ny+j)];
       HalfEdge & h1 = halfedge[4*((i-1)*ny+j)+2];
-      e.reset(N++, &h0);
+      e.reset(NE++, &h0);
       h0.set_edge(&e);
       h1.set_edge(&e);
       h0.set_opposite(&h1);
@@ -143,28 +153,28 @@ UniformMesh<D>::UniformMesh(double orign_x,
   }
   for(uint32_t j = 0; j < ny; j++)
   {
-    Edge & e = this->add_edge();
+    Edge & e = edge[NE]; 
     HalfEdge & h = halfedge[4*((nx-1)*ny+j)+2];
-    e.reset(N++, &h);
+    e.reset(NE++, &h);
     h.set_edge(&e);
   }
 
   /** x edge */
   for(uint32_t i = 0; i < nx; i++)
   {
-    Edge & e = this->add_edge();
+    Edge & e = edge[NE]; 
     HalfEdge & h = halfedge[4*i*ny+1];
-    e.reset(N++, &h);
+    e.reset(NE++, &h);
     h.set_edge(&e);
   }
   for(uint32_t i = 0; i < nx; i++)
   {
     for(uint32_t j = 1; j < ny; j++)
     {
-      Edge & e = this->add_edge();
+      Edge & e = edge[NE]; 
       HalfEdge & h0 = halfedge[4*(i*ny+j-1)+3];
       HalfEdge & h1 = halfedge[4*(i*ny+j)+1];
-      e.reset(N++, &h0);
+      e.reset(NE++, &h0);
       h0.set_edge(&e);
       h1.set_edge(&e);
       h0.set_opposite(&h1);
@@ -173,9 +183,9 @@ UniformMesh<D>::UniformMesh(double orign_x,
   }
   for(uint32_t i = 0; i < nx; i++)
   {
-    Edge & e = this->add_edge();
+    Edge & e = edge[NE]; 
     HalfEdge & h = halfedge[4*(i*ny+ny-1)+3];
-    e.reset(N++, &h);
+    e.reset(NE++, &h);
     h.set_edge(&e);
   }
   Base::update();
