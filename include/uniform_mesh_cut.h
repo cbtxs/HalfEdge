@@ -33,13 +33,13 @@ public:
   UniformMeshCut(Args&&... args) : Base(std::forward<Args>(args)...), geo_(), 
   subcell_(Base::number_of_blocks()) 
   {
-    update();
+    update_subcell();
   } 
 
   /**
    * @brief 更新 subcell_
    */
-  void update()
+  void update_subcell()
   {
     uint32_t NB = Base::number_of_blocks();
 

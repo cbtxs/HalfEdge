@@ -520,7 +520,7 @@ void CutMeshAlgorithm<Mesh>::cut_by_loop_interface(Interface & iface)
     }
   }
   _get_inner_cell(is_in_cell);
-  mesh_->update();
+  mesh_->update_subcell();
 }
 
 template<typename Mesh>

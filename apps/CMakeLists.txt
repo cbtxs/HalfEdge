@@ -9,7 +9,7 @@ set_target_properties(cutmesh PROPERTIES LINK_FLAGS "-static-libgcc -static-libs
 set_target_properties(cutmesh PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 
-add_library(cutmesh_new MODULE cut_mesh.cpp)
+add_library(cutmesh_new MODULE cut_mesh_new.cpp)
 
 # 静态链接 C++ 标准库
 set_target_properties(cutmesh_new PROPERTIES LINK_FLAGS "-static-libgcc -static-libstdc++")
