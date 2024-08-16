@@ -30,7 +30,7 @@ public:
    * @brief 默认构造函数
    */
   template<typename... Args>
-  UniformMeshCut(Args&&... args) : Base(std::forward<Args>(args)...), geo_(), 
+  UniformMeshCut(Args&&... args) : Base(std::forward<Args>(args)...), geo_(1e-4), 
   subcell_(Base::number_of_blocks()) 
   {
     update_subcell();

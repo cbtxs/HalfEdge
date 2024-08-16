@@ -130,6 +130,8 @@ private:
    */
   HalfEdge * _link_two_intersections(Intersection & a, Intersection & b, Cell * c=nullptr);
 
+  HalfEdge * _find_halfedge_of_intersection(Intersection & a);
+
   /**
    * @brief 获取内部单元
    */
@@ -248,6 +250,7 @@ void CutMeshAlgorithm<Mesh>::find_intersections_of_segment(InterfacePoint & ip0,
   {
     if(ins.type == 1)
     {
+      ins.h = _find_halfedge_of_intersection(ins);
       mesh_->splite_halfedge(ins.h, ins.point);
       ins.h = ins.h->previous();
       ins.type = 0;
@@ -265,6 +268,21 @@ void CutMeshAlgorithm<Mesh>::find_intersections_of_segment(InterfacePoint & ip0,
     ip1.h = intersections.back().h;
     ip1.type = 0;
   }
+}
+
+template<typename Mesh>
+Mesh::HalfEdge * CutMeshAlgorithm<Mesh>::_find_halfedge_of_intersection(Intersection & a)
+{
+  HalfEdge * h = a.h->next();
+  while (true)
+  {
+    h = h->previous();
+    const Point & p0 = h->previous()->node()->coordinate();
+    const Point & p1 = h->node()->coordinate();
+    if(mesh_->geometry_utils().point_on_segment(p0, p1, a.point))
+      break;
+  }
+  return h; 
 }
 
 /**
