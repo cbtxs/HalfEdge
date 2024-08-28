@@ -30,7 +30,7 @@ public:
    * @brief 默认构造函数
    */
   template<typename... Args>
-  UniformMeshCut(Args&&... args) : Base(std::forward<Args>(args)...), geo_(1e-4), 
+  UniformMeshCut(Args&&... args) : Base(std::forward<Args>(args)...), 
   subcell_(Base::number_of_blocks()) 
   {
     update_subcell();
@@ -69,6 +69,7 @@ public:
   {
     uint32_t idx = Base::find_point(p);
     const auto & cellc = subcell_[idx];
+    auto & geo_ = Base::geometry_utils();
 
     for(auto & c : cellc)
     {
@@ -106,9 +107,6 @@ private:
    * @brief 背景网格中单元的子单元
    */
   SubCellArray subcell_;
-
-  GeometryUtils2D geo_;
-
 };
 
 } // namespace HEM

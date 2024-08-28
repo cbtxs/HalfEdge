@@ -227,9 +227,9 @@ void get_cut_mesh2(MeshParameter mp,
    * meshptr2 : cut 两次的网格
    * 1. 
    */
-  std::shared_ptr<Mesh> meshptr1 = std::make_shared<Mesh>(a, b, hx, hy, nx, ny);
-  std::shared_ptr<Mesh> meshptr2 = std::make_shared<Mesh>(*meshptr1);
-  CutMeshAlg cut0(meshptr2);
+  std::shared_ptr<Mesh> meshptr0 = std::make_shared<Mesh>(a, b, hx, hy, nx, ny);
+  std::shared_ptr<Mesh> meshptr1 = std::make_shared<Mesh>(*meshptr0);
+  CutMeshAlg cut0(meshptr0);
   CutMeshAlg cut1(meshptr1);
 
   std::vector<Point> points0, points1;
@@ -241,17 +241,17 @@ void get_cut_mesh2(MeshParameter mp,
       is_fixed_points1, is_loop_interface1);
 
   /** iface0 的背景网格是 meshptr2 */
-  Interface iface0(points0, is_fixed_points0, meshptr2, is_loop_interface0);
+  Interface iface0(points0, is_fixed_points0, meshptr0, is_loop_interface0);
   Interface iface1(points1, is_fixed_points1, meshptr1, is_loop_interface1);
 
   cut0.cut_by_loop_interface(iface0);
   cut1.cut_by_loop_interface(iface1);
 
-  std::shared_ptr<Mesh> meshptr0 = std::make_shared<Mesh>(*meshptr2); 
+  std::shared_ptr<Mesh> meshptr2 = std::make_shared<Mesh>(*meshptr0); 
+  CutMeshAlg cut2(meshptr2);
 
   Interface iface2(points1, is_fixed_points1, meshptr2, is_loop_interface1);
-
-  cut0.cut_by_loop_interface(iface2); 
+  cut2.cut_by_loop_interface(iface2); 
 
   //auto & mesh0 = *meshptr0;
   //Figure fig0("out0", mesh0.get_box());
@@ -278,7 +278,7 @@ void get_cut_mesh2(MeshParameter mp,
   //check_mesh(*meshptr0);
   //check_mesh(*meshptr1);
   //check_mesh(*meshptr2);
-
+  
   /** 单元编号 */
   auto & cindex0 = *(meshptr0->get_cell_indices());
   auto & cindex1 = *(meshptr1->get_cell_indices());
@@ -287,8 +287,12 @@ void get_cut_mesh2(MeshParameter mp,
   { 
     uint32_t cidx = cindex2[c.index()];
     Point p = c.inner_point();
-    idx0[cidx] = cindex0[meshptr0->find_point(p)->index()];
-    idx1[cidx] = cindex1[meshptr1->find_point(p)->index()];
+    //idx0[cidx] = cindex0[meshptr0->find_point(p)->index()];
+    //idx1[cidx] = cindex1[meshptr1->find_point(p)->index()];
+    Cell * c0 = meshptr0->find_point(p);
+    Cell * c1 = meshptr1->find_point(p);
+    idx0[cidx] = cindex0[c0->index()];
+    idx1[cidx] = cindex1[c1->index()];
     return true;
   };
   meshptr2->for_each_entity(fun);

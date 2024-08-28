@@ -82,7 +82,8 @@ UniformMesh<D>::UniformMesh(double orign_x,
                          double hy, 
                          uint32_t nx, 
                          uint32_t ny):
-  Base((nx+1)*(ny+1), 2*nx*ny + nx + ny, nx*ny, 4*nx*ny), param_(orign_x, orign_y, hx, hy, nx, ny)
+  Base((nx+1)*(ny+1), 2*nx*ny + nx + ny, nx*ny, 4*nx*ny, 1e-5 
+      ), param_(orign_x, orign_y, hx, hy, nx, ny)
 {
   auto & node = *(this->get_node()); 
   auto & edge = *(this->get_edge());

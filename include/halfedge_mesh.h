@@ -42,7 +42,8 @@ public:
   using Array = typename NodeDataContainer::Base::template DataArray<T>;
 
 public:
-  HalfEdgeMeshBase(uint32_t NN = 0, uint32_t NE = 0, uint32_t NC = 0, uint32_t NH = 0): geometry_utils_(1e-10)
+  HalfEdgeMeshBase(uint32_t NN = 0, uint32_t NE = 0, uint32_t NC = 0, uint32_t NH = 0,
+      double eps = 1e-6): geometry_utils_(eps)
   {
     node_data_ptr_ = std::make_shared<NodeDataContainer>(NN);
     edge_data_ptr_ = std::make_shared<EdgeDataContainer>(NE);
